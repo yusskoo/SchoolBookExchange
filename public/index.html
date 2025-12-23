@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>校園二手書測試系統 (Modular)</title>
+    <!-- Firebase Compat Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-functions-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <h2>🏫 校園二手書測試系統</h2>
+
+    <div class="card" id="authSection">
+        <h3>🔐 帳號登入 / 註冊</h3>
+        <div id="loginInputs">
+            <input type="email" id="authEmail" placeholder="學校信箱 (@shsh.tw)">
+            <input type="password" id="authPassword" placeholder="密碼">
+            <!-- Added IDs for event listeners -->
+            <button id="btnRegister">註冊</button>
+            <button id="btnLogin" style="background: #6c757d;">登入</button>
+        </div>
+        <button id="logoutBtn" style="display:none; background: #dc3545;">登出帳號</button>
+    </div>
+
+    <div class="card" id="profileSection" style="display:none;">
+        <h3>👤 我的個人檔案</h3>
+        <div id="profileResult">載入資料中...</div>
+    </div>
+
+    <div class="card" id="completeProfileSection" style="display:none; border: 2px solid #e53e3e;">
+        <h3 style="color: #c53030;">⚠️ 請完成實名認證</h3>
+        <p style="font-size: 14px; color: #666;">為確保交易誠信，請填寫真實資料。資料將加密儲存，其他人僅能看到您的暱稱。</p>
+
+        <input type="text" id="inputRealName" placeholder="真實姓名 (僅管理員可見)">
+        <input type="text" id="inputStudentId" placeholder="學號 / 教職員工編號">
+        <input type="text" id="inputNickname" placeholder="公開顯示暱稱">
+        <button id="btnCompleteProfile" style="background: #e53e3e; width: 100%;">提交並啟用帳號</button>
+    </div>
+
+    <div class="card" id="uploadSection" style="display:none;">
+        <h3>📤 我要賣書</h3>
+
+        <div style="margin-bottom: 15px; text-align: center; border: 2px dashed #cbd5e0; padding: 20px; border-radius: 8px;"
+            id="dropZone">
+            <input type="file" id="bookImageInput" accept="image/*" style="display: none;">
+            <label for="bookImageInput" style="cursor: pointer; display: block;">
+                <div id="uploadPlaceholder">
+                    <span style="font-size: 24px;">📸</span><br>
+                    <span style="color: #4a5568;">點擊上傳書籍照片</span>
+                </div>
+                <img id="imagePreview" src=""
+                    style="max-width: 100%; max-height: 200px; display: none; border-radius: 4px; margin: 0 auto;">
+            </label>
+        </div>
+
+        <input type="text" id="newBookTitle" placeholder="書名">
+        <input type="number" id="newBookPrice" value="100" placeholder="價格">
+        <button id="btnUploadBook" style="background: #28a745;">確認上架</button>
+    </div>
+
+    <div class="card" id="transactionSection" style="display:none; border-left: 5px solid #2b6cb0;">
+        <h3>🤝 我的交易紀錄 (待處理)</h3>
+        <div id="transactionList"></div>
+    </div>
+
+    <div class="card">
+        <h3>📚 現有書籍清單</h3>
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <input type="text" id="searchInput" placeholder="🔍 搜尋書名..." style="flex: 1;">
+            <button id="btnSearch" style="background: #3182ce; width: auto;">搜尋</button>
+        </div>
+        <div id="bookList">正在載入書籍...</div>
+    </div>
+
+    <div id="globalStatus"></div>
+
+    <!-- Chat Modal -->
+    <div id="chatModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div
+            style="background:white; width:90%; max-width:400px; height:80%; margin:5% auto; border-radius:8px; display:flex; flex-direction:column; overflow:hidden;">
+            <div
+                style="background:#3182ce; color:white; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                <span id="chatTitle">聊天室</span>
+                <button id="chatCloseBtn"
+                    style="background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">&times;</button>
+            </div>
+
+            <div id="chatMessages" style="flex:1; overflow-y:auto; padding:10px; background:#f7fafc;">
+                <!-- Messages will go here -->
+            </div>
+
+            <div style="padding:10px; border-top:1px solid #eee; display:flex; gap:5px;">
+                <input type="text" id="chatInput" placeholder="輸入訊息..." style="flex:1;">
+                <button id="chatSendBtn" style="background:#3182ce; width:auto; padding:0 15px;">傳送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Module -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
