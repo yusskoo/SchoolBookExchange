@@ -1,0 +1,10 @@
+2025-12-24T16:15:19.380Z: CheckIn Error: Cannot read properties of undefined (reading 'serverTimestamp')
+Stack: TypeError: Cannot read properties of undefined (reading 'serverTimestamp')
+    at D:\SchoolBookExchange\functions\handlers\store.js:96:61
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Transaction.runTransaction (D:\SchoolBookExchange\functions\node_modules\@google-cloud\firestore\build\src\transaction.js:362:26)
+    at async D:\SchoolBookExchange\functions\handlers\store.js:75:24
+    at async D:\SchoolBookExchange\functions\node_modules\firebase-functions\lib\common\providers\https.js:458:26
+    at async runFunction (C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulatorRuntime.js:399:9)
+    at async runHTTPS (C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulatorRuntime.js:424:5)
+    at async C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulatorRuntime.js:585:21

@@ -17,17 +17,53 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
         const db = admin.firestore();
 
         try {
-            await db.runTransaction(async (t) => {
+            const result = await db.runTransaction(async (t) => {
                 const bookRef = db.collection('books').doc(bookId);
                 const bookDoc = await t.get(bookRef);
 
                 if (!bookDoc.exists) throw new Error('找不到該書籍');
-                if (bookDoc.data().status !== 'Available') throw new Error('書籍已被預訂');
+
+                if (bookDoc.data().status !== 'Available') {
+                    // [New] Check if user is participant of the active transaction
+                    if (bookDoc.data().status === 'Reserved') {
+                        const transQuery = db.collection('transactions')
+                            .where('bookId', '==', bookId)
+                            .where('status', '==', 'Pending')
+                            .limit(1);
+                        const transSnap = await t.get(transQuery);
+
+                        if (!transSnap.empty) {
+                            const transDoc = transSnap.docs[0];
+                            const transData = transDoc.data();
+                            // Allow Buyer or Seller to re-enter
+                            if (buyerId === transData.buyerId || buyerId === transData.sellerId) {
+                                return { existingId: transDoc.id };
+                            }
+                        }
+                    }
+                    throw new Error('書籍已被預訂');
+                }
 
                 const bookData = bookDoc.data();
+                const sellerId = bookData.sellerId || bookData.ownerId;
 
-                // 1. 更新書籍狀態
+                if (!sellerId) throw new Error('書籍缺少賣家資訊');
+
+                // 1. Get Seller Info for Notification Check (READ)
+                const sellerUserRef = db.collection('users').doc(sellerId);
+                const sellerSnap = await t.get(sellerUserRef);
+                const sellerData = sellerSnap.data() || {};
+                const shouldNotifyLine = !!sellerData.isLineNotifyEnabled;
+                const lineUserId = sellerData.lineUserId;
+                console.log(`Checking Line Notify for seller ${sellerId}: ${shouldNotifyLine}, LID: ${lineUserId}`);
+
+                // 2. 更新書籍狀態 (WRITE)
                 t.update(bookRef, { status: 'Reserved', reservedBy: buyerId });
+
+                // Send LINE Notification if applicable
+                if (shouldNotifyLine && lineUserId) {
+                    // ... (comment)
+                }
 
                 // 2. 建立交易紀錄
                 const transRef = db.collection('transactions').doc();
@@ -35,17 +71,30 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
                     bookId,
                     bookTitle: bookData.title,
                     buyerId,
-                    sellerId: bookData.ownerId,
+                    sellerId: sellerId,
                     agreedPrice: parseInt(agreedPrice),
                     status: 'Pending',
                     timestamp: new Date(),
                     // Flow V2.1: Buyer sets time on create
                     meetingTime: req.body.meetingTime ? new Date(req.body.meetingTime) : null,
                     isTimeAgreed: false,
-                    rescheduleCount: 0
+                    rescheduleCount: 0,
+                    // Store notification status snapshot if needed, or just relied on logging for now
+                    isLineNotifyTriggered: shouldNotifyLine
                 });
+                return { newId: transRef.id }; // Return new ID
             });
-            console.log("✅ 交易資料庫操作成功");
+
+            if (result && result.existingId) {
+                console.log("✅ 恢復現有交易:", result.existingId);
+                return res.status(200).send({ success: true, transactionId: result.existingId, message: "進入聊天室" });
+            }
+            if (result && result.newId) {
+                console.log("✅ 建立新交易:", result.newId);
+                // Need to handle notification here if we moved it out? No, logic is simple enough inside.
+                return res.status(200).send({ success: true, transactionId: result.newId, message: "預訂成功" });
+            }
+            // Should not happen
             res.status(200).send({ success: true, message: "預訂成功" });
         } catch (e) {
             console.error("交易執行失敗，具體原因:", e.message);
@@ -55,6 +104,31 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
 });
 
 // 3. 監聽交易更新：獎懲邏輯 + 發送通知
+// 3.1 New Order Notification (Improved)
+exports.onTransactionCreate = functions.firestore
+    .document('transactions/{transactionId}')
+    .onCreate(async (snap, context) => {
+        const data = snap.data();
+        const db = admin.firestore();
+
+        // Fetch Seller to check LINE binding
+        const sellerRef = db.collection('users').doc(data.sellerId);
+        const sellerDoc = await sellerRef.get();
+        if (!sellerDoc.exists) return;
+
+        const sellerData = sellerDoc.data();
+        if (sellerData.isLineNotifyEnabled && sellerData.lineUserId) {
+            const lineService = require('../services/line-service');
+            const msg = `📦 新訂單通知！\n\n買家已預訂您的書籍：「${data.bookTitle}」\n價格：$${data.agreedPrice}\n\n請盡快開啟網頁確認交易時間。`;
+            try {
+                await lineService.pushMessage(sellerData.lineUserId, msg);
+                console.log("LINE Notification sent to", data.sellerId);
+            } catch (e) {
+                console.error("Failed to send LINE:", e);
+            }
+        }
+    });
+
 exports.onTransactionUpdate = functions.firestore
     .document('transactions/{transactionId}')
     .onUpdate(async (change, context) => {

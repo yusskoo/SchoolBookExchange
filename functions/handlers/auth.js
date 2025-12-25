@@ -27,6 +27,8 @@ exports.checkSchoolEmail = functions.auth.user().onCreate(async (user) => {
             totalTransactions: 0,
             completedTransactions: 0,
             canceledTransactions: 0,
+            coins: 100, // 新註冊獎勵
+            myAvatars: ['default'], // 預設頭像
             joinDate: new Date()
         });
         console.log(`✅ 成功建立用戶文件: ${user.uid} (${email})`);
@@ -43,7 +45,7 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('unauthenticated', '請先登入帳號');
     }
 
-    const { realName, studentId, nickname } = data;
+    const { realName, studentId, nickname, isLineNotifyEnabled } = data;
     const uid = context.auth.uid;
 
     // 基本驗證
@@ -67,7 +69,8 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
             // 更新公開資料
             t.update(userRef, {
                 nickname,
-                isProfileCompleted: true
+                isProfileCompleted: true,
+                isLineNotifyEnabled: !!isLineNotifyEnabled
             });
         });
         return { success: true, message: "實名認證完成" };
