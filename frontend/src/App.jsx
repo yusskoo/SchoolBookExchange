@@ -266,7 +266,7 @@ const StudentDashboard = ({ coins, isCheckedIn, onCheckIn, onGoToStore, examCoun
             <div className="absolute top-0 right-0 w-12 h-12 bg-red-50 rounded-full -mr-5 -mt-5 z-0"></div>
             <div className="relative z-10 w-full flex flex-col justify-between h-full">
               <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold justify-center">
-                <Calendar size={12} className="text-red-500" /> 校務考試
+                <Calendar size={12} className="text-red-500" /> 貼心提醒
               </div>
               <div className="flex flex-col items-center justify-center -mt-1">
                 <div className="text-3xl font-bold text-gray-800 tracking-tighter leading-none">{days}</div>

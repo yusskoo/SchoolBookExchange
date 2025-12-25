@@ -1,9 +1,13 @@
 import { db } from '../config.js';
 import axios from 'axios';
+
 export const bookService = {
     // 取得書籍列表 (即時監聽)
     onBooksSnapshot(callback) {
-        return db.collection('books').onSnapshot(callback);
+        return db.collection('books').onSnapshot(snapshot => {
+            const books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            callback(books);
+        });
     },
     // 上架書籍
     async createBook(bookData) {
@@ -30,20 +34,48 @@ export const bookService = {
             throw error;
         }
     },
-    // ...
+    // 新增: 處理書本交易 (直接呼叫 Firebase Functions) - 用於 Chat
+    async startTransaction(book, currentUser, onTransactionCreated) {
+        if (!currentUser) return alert("請先登入");
+        if (currentUser.uid === book.sellerId) return alert("不能購買自己的書");
+
+        try {
+            const transactionsRef = db.collection('transactions');
+            const q = transactionsRef
+                .where('bookId', '==', book.id)
+                .where('buyerId', '==', currentUser.uid);
+
+            const snapshot = await q.get();
+            if (!snapshot.empty) {
+                onTransactionCreated(snapshot.docs[0].id);
+            } else {
+                const docRef = await transactionsRef.add({
+                    bookId: book.id,
+                    bookTitle: book.title,
+                    sellerId: book.sellerId,
+                    buyerId: currentUser.uid,
+                    price: book.price,
+                    status: 'Pending',
+                    timestamp: new Date()
+                });
+                onTransactionCreated(docRef.id);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("無法開啟對話: " + e.message);
+        }
+    },
+
     // 確認面交時間 (賣家)
     async confirmTransactionTime(transactionId) {
         const { functions } = await import('../config.js');
         const fn = functions.httpsCallable('confirmTransactionTime');
         return fn({ transactionId });
     },
-    // ... existing reschedule methods
-    // 取得使用者的交易紀錄 (買家或賣家)
+
     getUserTransactions(uid, callback) {
         return db.collection('transactions')
-            .where('buyerId', '==', uid) // 暫時先只抓買家，複合查詢可能需要 Index
-            // 為了簡化，我們分開查詢或讓後端處理，這裡先只查 "我是買家" 的
-            // 實際應用可能需要 OR 查詢或分別監聽
+            .where('buyerId', '==', uid)
             .onSnapshot(callback);
     },
     // 額外監聽 "我是賣家" 的交易
@@ -73,17 +105,36 @@ export const bookService = {
     },
     // 取得許願池列表 (即時監聽)
     onWishesSnapshot(callback) {
-        return db.collection('wishes').orderBy('timestamp', 'desc').onSnapshot(callback);
+        return db.collection('wishes').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+            const wishes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            callback(wishes);
+        });
     },
     // 新增願望
-    async addWish(user, content) {
-        if (!user) throw new Error("請先登入");
+    async addWish({ content, user, avatarId }) {
+        // App.jsx calls: addWish({ content, user: currentUser.nickname, avatarId: currentAvatarId })
         return db.collection('wishes').add({
-            uid: user.uid,
-            nickname: user.nickname || user.displayName || '隱身讀書人',
-            avatarUrl: user.avatarUrl || '',
+            uid: 'anonymous', // or from user context if passed
+            user: user || '同學',
+            avatarId: avatarId || 'default',
             content,
             timestamp: new Date()
         });
+    },
+    // Helper to add book (from App.jsx usage: addBook(data))
+    async addBook(bookData) {
+        return db.collection('books').add({
+            ...bookData,
+            status: 'Available',
+            timestamp: new Date()
+        });
+    },
+    // Helper to record checkin
+    recordCheckIn() {
+        // LocalStorage or minimal DB
+        localStorage.setItem('lastCheckIn', new Date().toDateString());
+    },
+    hasCheckedInToday() {
+        return localStorage.getItem('lastCheckIn') === new Date().toDateString();
     }
 };
