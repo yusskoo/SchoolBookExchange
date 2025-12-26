@@ -10,5 +10,8 @@ export default defineConfig({
   build: {
     outDir: '../public',
     emptyOutDir: true,
+  },
+  server: {
+    port: 5000,
   }
 })

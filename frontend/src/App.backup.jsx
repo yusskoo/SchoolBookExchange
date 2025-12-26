@@ -27,6 +27,8 @@ const COLORS = {
 const PUBLISHERS = ['龍騰', '翰林', '南一', '三民', '全華', '泰宇', '其他補習班'];
 const SUBJECTS = ['國文', '英文', '數學', '物理', '化學', '生物', '地科', '歷史', '地理', '公民'];
 const GRADES = ['高一', '高二', '高三'];
+const CONDITION_LEVELS = ['一成新', '三成新', '五成新', '九成新', '全新'];
+
 const CATEGORIES = [
   { id: 'all', name: '全部' },
   { id: 'chi', name: '國文' },
@@ -34,26 +36,70 @@ const CATEGORIES = [
   { id: 'math', name: '數學' },
   { id: 'sci', name: '自然' },
   { id: 'soc', name: '社會' },
-  { id: 'exam', name: '學測' },
+  { id: 'extra', name: '課外讀物' },
 ];
 
+
+// --- [修改] 頭像列表資料 (Demo Version) ---
 const AVATAR_LIST = [
-  { id: 'default', name: '初始初心者', price: 0, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=default&backgroundColor=E6DBC6' },
-  { id: 'cat', name: '熬夜貓貓', price: 50, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700' },
-  { id: 'glasses', name: '考滿分', price: 120, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
-  { id: 'cool', name: '校園酷蓋', price: 200, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
-  { id: 'artist', name: '文藝青年', price: 300, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
-  { id: 'robot', name: '理科腦', price: 500, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
+  // [類別 1] 預設
+  {
+    id: 'default',
+    name: '初始初心者',
+    price: 0,
+    src: 'https://i.postimg.cc/9fW28Bc0/niu.jpg'
+  },
+
+  // [類別 2] 100 代幣限定 (ID 以 special 開頭)
+  {
+    id: 'special1',
+    name: '限定兔兔',
+    price: 100,
+    src: 'https://i.postimg.cc/zyP43KbN/tu-zi.jpg'
+  },
+  {
+    id: 'special2',
+    name: '限定小豬',
+    price: 100,
+    src: 'https://i.postimg.cc/pd2vGBP9/zhu.jpg'
+  },
+  {
+    id: 'special3',
+    name: '限定狗狗',
+    price: 100,
+    src: 'https://i.postimg.cc/wB6zfk97/gou.jpg'
+  },
+  {
+    id: 'special4',
+    name: '限定小牛',
+    price: 100,
+    src: 'https://i.postimg.cc/qNvyYNG3/EE1D91FC-D76E-4FBA-A85F-33F8D82EAFEB.jpg'
+  },
+  {
+    id: 'special5',
+    name: '限定小羊',
+    price: 100,
+    src: 'https://i.postimg.cc/VkjgJMr4/84AD5380-E492-4603-B7C7-4BD68372B94A.jpg'
+  },
+
+  // [類別 3] 經典系列
+  { id: 'cat', name: '熬夜貓貓', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700' },
+  { id: 'glasses', name: '考滿分', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
+  { id: 'cool', name: '校園酷蓋', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
+  { id: 'artist', name: '文藝青年', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
+  { id: 'robot', name: '理科腦', price: 100, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
 ];
 
-const CONDITION_LEVELS = ['一成新', '三成新', '五成新', '九成新', '全新'];
+
 
 const INITIAL_WISHES = [];
 
-const MOCK_NOTIFICATIONS = [
+const INITIAL_NOTIFICATIONS = [
   { id: 1, type: 'comment', user: '王小明', avatar: null, content: '請問這本書還有嗎？', time: '5分鐘前', isRead: false },
-  { id: 2, type: 'system', content: '您的書籍已經上架超過 30 天未售出。', time: '2小時前', isRead: false }
+  { id: 2, type: 'system', content: '您的書籍已經上架超過 30 天未售出。', time: '2小時前', isRead: false },
+  { id: 3, type: 'system', content: '歡迎來到 SchoolBook Exchange！', time: '1天前', isRead: true }
 ];
+
 
 // --- Helper Functions ---
 const PriceDisplay = ({ type, price, originalPrice, large = false }) => {
@@ -68,10 +114,10 @@ const SkeletonCard = () => (
     <div className="p-4 space-y-3"><div className="h-4 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div></div>
   </div>
 );
-
+// --- [組件] 自動輪播精選區 ---
 const FeaturedCarousel = ({ items, onNavigate }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const featuredItems = items.slice(0, 5);
+  const featuredItems = (items || []).slice(0, 5); // Use first 5 real items
 
   useEffect(() => {
     if (featuredItems.length === 0) return;
@@ -89,21 +135,34 @@ const FeaturedCarousel = ({ items, onNavigate }) => {
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-orange-500 text-white p-1 rounded-full animate-pulse"><Flame size={16} fill="currentColor" /></span>
         <h2 className="text-lg font-bold tracking-wide flex items-center gap-2" style={{ color: COLORS.brownWindmill }}>
-          本日精選 <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">自動更新中</span>
+          本日精選
+          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">自動更新中</span>
         </h2>
       </div>
-      <div className="relative w-full h-48 bg-white rounded-2xl shadow-md overflow-hidden border cursor-pointer group" style={{ borderColor: COLORS.whiteBucks }} onClick={() => onNavigate('product', currentItem)}>
-        <div className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 scale-110 transition-all duration-1000" style={{ backgroundImage: `url(${currentItem.cover || currentItem.imageBase64})` }}></div>
+
+      <div className="relative w-full h-48 bg-white rounded-2xl shadow-md overflow-hidden border cursor-pointer group"
+        style={{ borderColor: COLORS.whiteBucks }}
+        onClick={() => onNavigate('product', currentItem)}>
+
+        <div key={currentItem.id + '-bg'}
+          className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 animate-pulse-slow transition-all duration-1000 transform scale-110"
+          style={{ backgroundImage: `url(${currentItem.cover || currentItem.imageBase64})` }}></div>
+
         <div className="absolute inset-0 flex items-center p-4 z-10">
-          <div className="w-28 h-36 flex-shrink-0 rounded-lg overflow-hidden shadow-lg border border-white transform group-hover:scale-105 transition-transform duration-500">
+          <div key={currentItem.id + '-img'} className="w-28 h-36 flex-shrink-0 rounded-lg overflow-hidden shadow-lg border border-white transform transition-transform duration-500 hover:scale-105 animate-fade-in-up">
             <img src={currentItem.cover || currentItem.imageBase64} alt={currentItem.title} className="w-full h-full object-cover" />
           </div>
-          <div className="flex-1 ml-4 flex flex-col justify-center h-full">
+
+          <div key={currentItem.id + '-text'} className="flex-1 ml-4 flex flex-col justify-center h-full animate-fade-in-right">
             <div className="flex items-start justify-between mb-1">
               <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md">HOT</span>
               <span className="text-xs text-gray-400">{activeIndex + 1} / {featuredItems.length}</span>
             </div>
-            <h3 className="font-bold text-lg text-[#5D4037] line-clamp-2 leading-tight mb-2 animate-fade-in">{currentItem.title}</h3>
+
+            <h3 className="font-bold text-lg text-[#5D4037] line-clamp-2 leading-tight mb-2">
+              {currentItem.title}
+            </h3>
+
             <div className="mt-auto">
               <p className="text-xs text-gray-500 mb-1">{currentItem.author}</p>
               <div className="flex items-center justify-between">
@@ -115,12 +174,44 @@ const FeaturedCarousel = ({ items, onNavigate }) => {
             </div>
           </div>
         </div>
+
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
           {featuredItems.map((_, idx) => (
-            <div key={idx} className={`h-1 rounded-full transition-all duration-300 ${idx === activeIndex ? 'w-6 bg-[#756256]' : 'w-1.5 bg-gray-300'}`}></div>
+            <div
+              key={idx}
+              className={`h-1 rounded-full overflow-hidden transition-all duration-300 ${idx === activeIndex ? 'w-6 bg-gray-200' : 'w-1.5 bg-gray-300'}`}
+            >
+              {idx === activeIndex && (
+                <div className="h-full bg-[#756256] animate-progress-fill" style={{ width: '100%' }}></div>
+              )}
+            </div>
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes progress-fill {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .animate-progress-fill {
+          animation: progress-fill 4s linear;
+        }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.5s ease-out forwards;
+        }
+        @keyframes fade-in-right {
+          from { opacity: 0; transform: translateX(10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-fade-in-right {
+          animation: fade-in-right 0.5s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };
@@ -179,20 +270,6 @@ const StudentDashboard = ({ coins, examCountdown }) => {
   );
 };
 
-const [examData, setExamData] = useState(null);
-
-useEffect(() => {
-  const fetchCalendar = async () => {
-    try {
-      const getExamCountdown = httpsCallable(functions, 'getExamCountdown');
-      const result = await getExamCountdown();
-      setExamData(result.data); // 這裡會得到 { exams: [...] }
-    } catch (error) {
-      console.error("行事曆抓取失敗", error);
-    }
-  };
-  fetchCalendar();
-}, []);
 
 const WishingWell = ({ wishes, onAddWish, currentUser, currentAvatar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -244,20 +321,37 @@ const LoginPage = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [realName, setRealName] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [nickname, setNickname] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (isRegistering && !email.endsWith('@shsh.tw')) {
-      alert("僅限 @shsh.tw 校內信箱註冊！");
-      setIsLoading(false);
-      return;
+    if (isRegistering) {
+      if (!email.endsWith('@shsh.tw')) {
+        alert("僅限 @shsh.tw 校內信箱註冊！");
+        setIsLoading(false);
+        return;
+      }
+      if (!realName || !studentId || !nickname) {
+        alert("請填寫所有欄位（姓名、學號、暱稱）");
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {
       if (isRegistering) {
         await authService.signUp(email, password);
+        try {
+          await authService.completeProfile({ realName, studentId, nickname });
+          alert("註冊成功！");
+        } catch (profileError) {
+          console.error("Profile completion failed", profileError);
+          alert("註冊成功，但在建立個人資料時發生錯誤，請稍後聯繫管理員。");
+        }
         alert("註冊成功！請直接登入");
         setIsRegistering(false);
       } else {
@@ -278,57 +372,114 @@ const LoginPage = ({ onLogin }) => {
         <p className="text-sm mb-6" style={{ color: COLORS.brushwood }}>
           {isRegistering ? '加入我們，讓舊書重獲新生' : '讓閒置的講義，找到新的主人'}
         </p>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3 mb-4">
+          {isRegistering && (
+            <>
+              <input type="text" value={realName} onChange={e => setRealName(e.target.value)} placeholder="真實姓名 (不公開)" className="w-full p-3 border rounded-xl bg-gray-50" required />
+              <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="學號" className="w-full p-3 border rounded-xl bg-gray-50" required />
+              <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="顯示暱稱" className="w-full p-3 border rounded-xl bg-gray-50" required />
+            </>
+          )}
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (@shsh.tw)" className="w-full p-3 border rounded-xl" required />
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full p-3 border rounded-xl" required />
+
           <button type="submit" disabled={isLoading} className="w-full py-3 rounded-xl border-2 font-bold mb-3 hover:bg-gray-50 flex items-center justify-center gap-2" style={{ borderColor: COLORS.whiteBucks, color: COLORS.brownWindmill }}>
             {isLoading ? '處理中...' : (isRegistering ? '註冊' : '登入')}
           </button>
-          <div className="text-xs text-gray-400 cursor-pointer hover:underline" onClick={() => setIsRegistering(!isRegistering)}>
-            {isRegistering ? '已有帳號？登入' : '沒有帳號？點此註冊 (限用校內信箱)'}
-          </div>
         </form>
+        <button onClick={() => setIsRegistering(!isRegistering)} className="text-xs text-gray-400 hover:underline">
+          {isRegistering ? '已有帳號？登入' : '沒有帳號？點此註冊 (限用校內信箱)'}
+        </button>
       </div>
     </div>
   );
 };
 
-const ProductDetailPage = ({ product, onBack, onContact }) => {
+// --- 商品詳情頁 ---
+const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   if (!product) return null;
+  const isOwner = currentUser?.uid === product.sellerId;
+
   return (
     <div className="min-h-screen pb-24 bg-white" style={fontStyle}>
       <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-4 py-3 bg-white/80 backdrop-blur-md border-b" style={{ borderColor: COLORS.whiteBucks }}>
         <button onClick={onBack} className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"><ChevronLeft size={20} color={COLORS.brownWindmill} /></button>
-        <div className="flex gap-3"><button className="p-2 rounded-full hover:bg-gray-100"><Share2 size={20} color={COLORS.brownWindmill} /></button><button className="p-2 rounded-full hover:bg-gray-100"><Heart size={20} color={COLORS.brownWindmill} /></button></div>
-      </nav>
-      <div className="pt-16 pb-6">
-        <div className="aspect-[4/3] bg-gray-100 relative">
-          <img src={product.cover || product.imageBase64} alt={product.title} className="w-full h-full object-contain bg-[#F9F7F5]" />
+        <div className="flex gap-3">
+          <button className="p-2 rounded-full hover:bg-gray-100"><Share2 size={20} color={COLORS.brownWindmill} /></button>
+          <button className="p-2 rounded-full hover:bg-gray-100"><Heart size={20} color={COLORS.brownWindmill} /></button>
         </div>
-        <div className="px-5 mt-6">
-          <div className="flex gap-2 mb-2"><span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.subject}</span><span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.grade}</span></div>
-          <h1 className="text-2xl font-bold mb-1 leading-tight" style={{ color: COLORS.brownWindmill }}>{product.title}</h1>
+      </nav>
+
+      <div className="pt-16 pb-6 md:pt-20 md:pb-12 md:px-8 max-w-6xl mx-auto md:flex md:gap-10 md:items-start">
+        {/* Left: Image */}
+        <div className="aspect-[4/3] bg-gray-100 relative md:w-1/2 md:aspect-square md:rounded-2xl md:overflow-hidden md:shadow-sm md:sticky md:top-24">
+          <img src={product.cover || product.imageBase64 || "https://dummyimage.com/600x400/eee/aaa"} alt={product.title} className="w-full h-full object-contain bg-[#F9F7F5]" />
+        </div>
+
+        {/* Right: Details */}
+        <div className="px-5 mt-6 md:w-1/2 md:px-0 md:mt-0">
+          <div className="flex gap-2 mb-2">
+            <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.subject}</span>
+            {product.grade && product.grade !== '其他' && (
+              <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.grade}</span>
+            )}
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold mt-4 mb-2 leading-tight" style={{ color: COLORS.brownWindmill }}>{product.title}</h1>
           <p className="text-sm text-gray-500 mb-4">{product.author} · {product.publisher}</p>
+
           <div className="flex items-end gap-3 mb-6 pb-6 border-b" style={{ borderColor: COLORS.whiteBucks }}>
             <PriceDisplay type={product.type} price={product.price} originalPrice={product.originalPrice} large />
           </div>
-          <div className="space-y-4">
+
+          <div className="space-y-6">
             <div>
               <h3 className="text-sm font-bold text-[#9E9081] mb-2">商品狀況</h3>
-              <p className="text-gray-700">{product.conditionLevel} · {product.location ? product.location : '面交'}</p>
+              <p className="text-gray-700 bg-gray-50 p-3 rounded-lg inline-block border border-gray-100">{product.conditionLevel}</p>
+              <p className="text-gray-700 mt-2">{product.location ? product.location : '面交'}</p>
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家描述</h3>
-              <p className="text-gray-700 leading-relaxed">{product.description || '賣家未提供詳細描述。'}</p>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">{product.description || "賣家未提供詳細描述。"}</p>
             </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家資訊</h3>
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F9F7F5] border border-stone-100">
+                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white shadow-sm">
+                  <User size={24} className="text-gray-500" />
+                </div>
+                <div>
+                  <div className="font-bold text-[#756256] text-lg">
+                    {product.seller?.nickname || product.seller?.name || "未知賣家"}
+                    <span className="text-sm text-gray-500 font-normal ml-2">@{product.seller?.studentId || "未知學號"}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center gap-1">
+                    <Star size={12} fill="#fbbf24" className="text-yellow-400" />
+                    <span className="font-bold text-gray-700">{product.seller?.score || 5.0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Contact Button */}
+            {!isOwner && (
+              <div className="hidden md:block pt-4">
+                <button onClick={onContact} className="w-full py-4 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-lg">
+                  <MessageCircle size={20} /> 聯絡賣家 / 預訂
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t safe-area-bottom flex gap-3" style={{ borderColor: COLORS.whiteBucks }}>
-        <button onClick={onContact} className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2">
-          <MessageCircle size={18} /> 預訂/聯絡賣家
-        </button>
-      </div>
+
+      {/* Mobile Sticky Bottom Bar */}
+      {!isOwner && (
+        <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t safe-area-bottom flex gap-3 md:hidden z-40" style={{ borderColor: COLORS.whiteBucks }}>
+          <button onClick={onContact} className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2">
+            <MessageCircle size={18} /> 聯絡賣家
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -374,6 +525,7 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
       <div className="max-w-6xl mx-auto px-4 -mt-6">
         <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">{CATEGORIES.map(cat => (<button key={cat.id} className="whitespace-nowrap px-5 py-2 rounded-full text-sm tracking-wide shadow-sm transition-all border" style={{ backgroundColor: COLORS.bgLight, color: COLORS.brownWindmill, borderColor: COLORS.whiteBucks }}>{cat.name}</button>))}</div>
         <StudentDashboard coins={coins} examCountdown={examCountdown} />
+        <FeaturedCarousel items={books} onNavigate={onNavigate} />
         <WishingWell wishes={wishes} onAddWish={onAddWish} currentUser={user} currentAvatar={currentAvatar} />
         <div className="pb-8">
           <div className="flex justify-between items-end mb-4 px-1 border-b pb-2" style={{ borderColor: COLORS.whiteBucks }}><h2 className="text-xl font-bold flex items-center gap-2 tracking-wide" style={{ color: COLORS.brownWindmill }}><Book size={20} style={{ color: COLORS.chocolateBubble }} />{searchQuery ? '搜尋結果' : '探索發現'}</h2></div>
@@ -405,24 +557,86 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
   const [myListings, setMyListings] = useState(INITIAL_MY_LISTINGS);
   const [sellForm, setSellForm] = useState({
-    title: '', author: '', price: '', conditionLevel: '九成新', images: []
+    title: '',
+    bookType: 'textbook',
+    gradeLevel: '',
+    subject: '',
+    transactionType: 'sell',
+    price: '',
+    conditionLevel: '九成新',
+    description: '',
+    coverImagePreview: null
   });
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleUpload = () => {
-    alert("上架成功！(模擬)");
-    const newItem = {
-      id: Date.now(),
-      title: sellForm.title || "未命名書籍",
-      price: sellForm.price || 0,
-      type: 'sell',
-      status: 'active',
-      date: new Date().toLocaleDateString(),
-      views: 0,
-      cover: "https://im1.book.com.tw/image/getImage?i=https://www.books.com.tw/img/001/086/56/0010865620.jpg&v=5f2a7a5dk&w=348&h=348"
-    };
-    setMyListings([newItem, ...myListings]);
-    setTab('shelf');
-    setSellForm({ title: '', author: '', price: '', conditionLevel: '九成新', images: [] });
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSellForm({ ...sellForm, coverImagePreview: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!sellForm.coverImagePreview) {
+      alert("請上傳書籍封面！");
+      return;
+    }
+    if (!sellForm.title) {
+      alert("請填寫書籍名稱！");
+      return;
+    }
+    if (sellForm.transactionType === 'sell' && !sellForm.price) {
+      alert("請填寫售價！");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const bookData = {
+        title: sellForm.title,
+        author: '未提供',
+        publisher: sellForm.bookType === 'textbook' ? '教科書' : '課外讀物',
+        subject: sellForm.bookType === 'textbook' ? sellForm.subject : '課外讀物',
+        grade: sellForm.bookType === 'textbook' ? sellForm.gradeLevel : '其他',
+        price: sellForm.transactionType === 'gift' ? 0 : Number(sellForm.price),
+        type: sellForm.transactionType === 'gift' ? 'gift' : 'sell',
+        conditionLevel: sellForm.conditionLevel,
+        description: sellForm.description,
+        sellerId: user.uid,
+        seller: {
+          nickname: user.nickname || user.email,
+          studentId: user.studentId || '未知',
+          score: user.creditScore || 5.0
+        },
+        cover: sellForm.coverImagePreview,
+        imageBase64: sellForm.coverImagePreview,
+        timestamp: new Date()
+      };
+
+      await bookService.addBook(bookData);
+      alert("上架成功！");
+      setTab('shelf');
+      setSellForm({
+        title: '',
+        bookType: 'textbook',
+        gradeLevel: '',
+        subject: '',
+        transactionType: 'sell',
+        price: '',
+        conditionLevel: '九成新',
+        description: '',
+        coverImagePreview: null
+      });
+    } catch (error) {
+      console.error("上架失敗:", error);
+      alert("上架失敗: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
@@ -465,28 +679,168 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
         {/* Content */}
         {tab === 'upload' ? (
           <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4 animate-fade-in" style={{ borderColor: COLORS.whiteBucks }}>
-            <div className="text-center p-6 border-2 border-dashed rounded-lg bg-[#F9F7F5] cursor-pointer" style={{ borderColor: COLORS.fossilGray }}>
-              <ImageIcon className="mx-auto text-[#9E9081] mb-2" />
-              <span className="text-sm text-[#756256]">點擊上傳封面照片</span>
-            </div>
+            {/* 1. 封面上傳 */}
             <div>
-              <label className="block text-xs font-bold text-[#9E9081] mb-1">書籍名稱</label>
-              <input type="text" value={sellForm.title} onChange={e => setSellForm({ ...sellForm, title: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-50 text-sm" placeholder="例如：龍騰高一英文" />
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">上傳書籍封面 *</label>
+              <input type="file" id="cover-upload" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              <label htmlFor="cover-upload" className="block text-center p-8 border-2 border-dashed rounded-lg bg-[#F9F7F5] cursor-pointer hover:bg-[#E6DBC6] transition-colors" style={{ borderColor: COLORS.fossilGray }}>
+                {sellForm.coverImagePreview ? (
+                  <img src={sellForm.coverImagePreview} alt="預覽" className="max-h-48 mx-auto rounded" />
+                ) : (
+                  <>
+                    <ImageIcon className="mx-auto text-[#9E9081] mb-2" size={32} />
+                    <span className="text-sm text-[#756256]">點擊上傳封面照片</span>
+                  </>
+                )}
+              </label>
             </div>
+
+            {/* 2. 書籍名稱 */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">書籍名稱 *</label>
+              <input
+                type="text"
+                value={sellForm.title}
+                onChange={e => setSellForm({ ...sellForm, title: e.target.value })}
+                className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                placeholder="例如：好開心"
+                required
+              />
+            </div>
+
+            {/* 3. 書籍分類 */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">書籍分類 *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, bookType: 'textbook' })}
+                  className={`py-2 px-6 rounded-lg font-bold transition-colors ${sellForm.bookType === 'textbook'
+                      ? 'bg-[#756256] text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                >
+                  教科書
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, bookType: 'extracurricular' })}
+                  className={`py-2 px-6 rounded-lg font-bold transition-colors ${sellForm.bookType === 'extracurricular'
+                      ? 'bg-[#756256] text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                >
+                  課外讀物
+                </button>
+              </div>
+            </div>
+
+            {/* 4. 年級和科目 (僅教科書) */}
+            {sellForm.bookType === 'textbook' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-[#9E9081] mb-2">年級</label>
+                  <select
+                    value={sellForm.gradeLevel}
+                    onChange={e => setSellForm({ ...sellForm, gradeLevel: e.target.value })}
+                    className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                  >
+                    <option value="">選擇年級</option>
+                    <option value="國中">國中</option>
+                    <option value="高中">高中</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#9E9081] mb-2">科目</label>
+                  <select
+                    value={sellForm.subject}
+                    onChange={e => setSellForm({ ...sellForm, subject: e.target.value })}
+                    className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                  >
+                    <option value="">選擇科目</option>
+                    <option value="國文">國文</option>
+                    <option value="數學">數學</option>
+                    <option value="英文">英文</option>
+                    <option value="自然">自然</option>
+                    <option value="社會">社會</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* 5. 交易方式 */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">交易方式 *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, transactionType: 'sell' })}
+                  className={`py-2 px-6 rounded-lg font-bold transition-colors ${sellForm.transactionType === 'sell'
+                      ? 'bg-[#756256] text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                >
+                  販售
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, transactionType: 'gift', price: '0' })}
+                  className={`py-2 px-6 rounded-lg font-bold transition-colors ${sellForm.transactionType === 'gift'
+                      ? 'bg-[#756256] text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                >
+                  贈送
+                </button>
+              </div>
+            </div>
+
+            {/* 6. 售價和書況 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-[#9E9081] mb-1">售價 (NT$)</label>
-                <input type="number" value={sellForm.price} onChange={e => setSellForm({ ...sellForm, price: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-50 text-sm" placeholder="100" />
+                <label className="block text-sm font-bold text-[#9E9081] mb-2">
+                  售價 (NT$) {sellForm.transactionType === 'sell' && '*'}
+                </label>
+                <input
+                  type="number"
+                  value={sellForm.price}
+                  onChange={e => setSellForm({ ...sellForm, price: e.target.value })}
+                  className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                  placeholder="100"
+                  disabled={sellForm.transactionType === 'gift'}
+                  required={sellForm.transactionType === 'sell'}
+                />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#9E9081] mb-1">書況</label>
-                <select value={sellForm.conditionLevel} onChange={e => setSellForm({ ...sellForm, conditionLevel: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-50 text-sm">
+                <label className="block text-sm font-bold text-[#9E9081] mb-2">書況</label>
+                <select
+                  value={sellForm.conditionLevel}
+                  onChange={e => setSellForm({ ...sellForm, conditionLevel: e.target.value })}
+                  className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                >
                   {CONDITION_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
             </div>
-            <button onClick={handleUpload} className="w-full py-3 bg-[#756256] text-white rounded-xl font-bold shadow-md hover:bg-[#5D4E44] transition-colors">
-              確認上架
+
+            {/* 7. 描述 (選填) */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">描述 (選填)</label>
+              <textarea
+                value={sellForm.description}
+                onChange={e => setSellForm({ ...sellForm, description: e.target.value })}
+                className="w-full p-3 border rounded-lg bg-gray-50 text-sm h-24 resize-none"
+                placeholder="請描述書籍狀況..."
+              />
+            </div>
+
+            {/* 上架按鈕 */}
+            <button
+              onClick={handleUpload}
+              disabled={isUploading}
+              className="w-full py-3 bg-[#756256] text-white rounded-xl font-bold shadow-md hover:bg-[#5D4E44] transition-colors disabled:opacity-50"
+            >
+              {isUploading ? '上架中...' : '確認上架'}
             </button>
           </div>
         ) : tab === 'store' ? (

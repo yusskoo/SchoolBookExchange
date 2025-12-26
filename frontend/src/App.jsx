@@ -27,6 +27,8 @@ const COLORS = {
 const PUBLISHERS = ['龍騰', '翰林', '南一', '三民', '全華', '泰宇', '其他補習班'];
 const SUBJECTS = ['國文', '英文', '數學', '物理', '化學', '生物', '地科', '歷史', '地理', '公民'];
 const GRADES = ['高一', '高二', '高三'];
+const CONDITION_LEVELS = ['一成新', '三成新', '五成新', '九成新', '全新'];
+
 const CATEGORIES = [
   { id: 'all', name: '全部' },
   { id: 'chi', name: '國文' },
@@ -34,26 +36,111 @@ const CATEGORIES = [
   { id: 'math', name: '數學' },
   { id: 'sci', name: '自然' },
   { id: 'soc', name: '社會' },
-  { id: 'exam', name: '學測' },
+  { id: 'extra', name: '課外讀物' },
 ];
 
+
+// 新增橫向捲動分區組件
+const AvatarRow = ({ title, avatars, onPurchase, onEquip, currentAvatarId, myAvatars, coins }) => (
+  <div className="mb-8">
+    {/* 分區標題與左側咖啡色裝飾條 */}
+    <h4 className="font-bold text-[#756256] mb-4 flex items-center gap-2 px-1 text-sm md:text-base">
+      <span className="w-1.5 h-5 bg-[#A58976] rounded-full"></span>
+      {title}
+    </h4>
+
+    {/* 橫向捲動容器 */}
+    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+      {avatars.map(avatar => {
+        const isOwned = myAvatars.includes(avatar.id);
+        const isEquipped = currentAvatarId === avatar.id;
+        const canAfford = coins >= avatar.price;
+
+        return (
+          <div key={avatar.id} className="min-w-[110px] bg-white border rounded-2xl p-3 flex flex-col items-center shadow-sm" style={{ borderColor: '#E8E3DF' }}>
+            <div className="w-14 h-14 rounded-full overflow-hidden mb-3 bg-gray-50 border p-1">
+              <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover rounded-full" />
+            </div>
+            <div className="font-bold text-[10px] text-[#5D4037] mb-3 truncate w-full text-center">{avatar.name}</div>
+
+            <button
+              onClick={() => isOwned ? onEquip(avatar.id) : onPurchase(avatar.id, avatar.price)}
+              disabled={!isOwned && !canAfford}
+              className={`w-full py-1.5 rounded-full text-[10px] font-bold flex items-center justify-center gap-1 transition-colors ${isOwned
+                ? (isEquipped ? 'bg-gray-100 text-gray-400' : 'bg-[#756256] text-white hover:bg-[#5D4E44]')
+                : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                } ${(!isOwned && !canAfford) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isOwned ? (isEquipped ? '使用中' : '更換') : <>NT$ {avatar.price}</>}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+
+// --- [修改] 頭像列表資料 (Demo Version) ---
 const AVATAR_LIST = [
-  { id: 'default', name: '初始初心者', price: 0, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=default&backgroundColor=E6DBC6' },
-  { id: 'cat', name: '熬夜貓貓', price: 50, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700' },
-  { id: 'glasses', name: '考滿分', price: 120, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
-  { id: 'cool', name: '校園酷蓋', price: 200, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
-  { id: 'artist', name: '文藝青年', price: 300, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
-  { id: 'robot', name: '理科腦', price: 500, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
+  // [類別 1] 預設
+  {
+    id: 'default',
+    name: '初始初心者',
+    price: 0,
+    src: 'https://i.postimg.cc/9fW28Bc0/niu.jpg'
+  },
+
+  // [類別 2] 100 代幣限定 (ID 以 special 開頭)
+  {
+    id: 'special1',
+    name: '限定兔兔',
+    price: 100,
+    src: 'https://i.postimg.cc/zyP43KbN/tu-zi.jpg'
+  },
+  {
+    id: 'special2',
+    name: '限定小豬',
+    price: 100,
+    src: 'https://i.postimg.cc/pd2vGBP9/zhu.jpg'
+  },
+  {
+    id: 'special3',
+    name: '限定狗狗',
+    price: 100,
+    src: 'https://i.postimg.cc/wB6zfk97/gou.jpg'
+  },
+  {
+    id: 'special4',
+    name: '限定小牛',
+    price: 100,
+    src: 'https://i.postimg.cc/qNvyYNG3/EE1D91FC-D76E-4FBA-A85F-33F8D82EAFEB.jpg'
+  },
+  {
+    id: 'special5',
+    name: '限定小羊',
+    price: 100,
+    src: 'https://i.postimg.cc/VkjgJMr4/84AD5380-E492-4603-B7C7-4BD68372B94A.jpg'
+  },
+
+  // [類別 3] 經典系列
+  { id: 'cat', name: '熬夜貓貓', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700' },
+  { id: 'glasses', name: '考滿分', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
+  { id: 'cool', name: '校園酷蓋', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
+  { id: 'artist', name: '文藝青年', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
+  { id: 'robot', name: '理科腦', price: 100, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
 ];
 
-const CONDITION_LEVELS = ['一成新', '三成新', '五成新', '九成新', '全新'];
+
 
 const INITIAL_WISHES = [];
 
-const MOCK_NOTIFICATIONS = [
+const INITIAL_NOTIFICATIONS = [
   { id: 1, type: 'comment', user: '王小明', avatar: null, content: '請問這本書還有嗎？', time: '5分鐘前', isRead: false },
-  { id: 2, type: 'system', content: '您的書籍已經上架超過 30 天未售出。', time: '2小時前', isRead: false }
+  { id: 2, type: 'system', content: '您的書籍已經上架超過 30 天未售出。', time: '2小時前', isRead: false },
+  { id: 3, type: 'system', content: '歡迎來到 SchoolBook Exchange！', time: '1天前', isRead: true }
 ];
+
 
 // --- Helper Functions ---
 const PriceDisplay = ({ type, price, originalPrice, large = false }) => {
@@ -69,9 +156,10 @@ const SkeletonCard = () => (
   </div>
 );
 
+// --- [組件] 自動輪播精選區 ---
 const FeaturedCarousel = ({ items, onNavigate }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const featuredItems = items.slice(0, 5);
+  const featuredItems = (items || []).slice(0, 5); // Use first 5 real items
 
   useEffect(() => {
     if (featuredItems.length === 0) return;
@@ -85,25 +173,38 @@ const FeaturedCarousel = ({ items, onNavigate }) => {
   const currentItem = featuredItems[activeIndex];
 
   return (
-    <div className="mx-4 mb-8">
+    <div className="h-full">
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-orange-500 text-white p-1 rounded-full animate-pulse"><Flame size={16} fill="currentColor" /></span>
         <h2 className="text-lg font-bold tracking-wide flex items-center gap-2" style={{ color: COLORS.brownWindmill }}>
-          本日精選 <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">自動更新中</span>
+          本日精選
+          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">自動更新中</span>
         </h2>
       </div>
-      <div className="relative w-full h-48 bg-white rounded-2xl shadow-md overflow-hidden border cursor-pointer group" style={{ borderColor: COLORS.whiteBucks }} onClick={() => onNavigate('product', currentItem)}>
-        <div className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 scale-110 transition-all duration-1000" style={{ backgroundImage: `url(${currentItem.cover || currentItem.imageBase64})` }}></div>
+
+      <div className="relative w-full h-48 bg-white rounded-2xl shadow-md overflow-hidden border cursor-pointer group"
+        style={{ borderColor: COLORS.whiteBucks }}
+        onClick={() => onNavigate('product', currentItem)}>
+
+        <div key={currentItem.id + '-bg'}
+          className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 animate-pulse-slow transition-all duration-1000 transform scale-110"
+          style={{ backgroundImage: `url(${currentItem.cover || currentItem.imageBase64})` }}></div>
+
         <div className="absolute inset-0 flex items-center p-4 z-10">
-          <div className="w-28 h-36 flex-shrink-0 rounded-lg overflow-hidden shadow-lg border border-white transform group-hover:scale-105 transition-transform duration-500">
+          <div key={currentItem.id + '-img'} className="w-28 h-36 flex-shrink-0 rounded-lg overflow-hidden shadow-lg border border-white transform transition-transform duration-500 hover:scale-105 animate-fade-in-up">
             <img src={currentItem.cover || currentItem.imageBase64} alt={currentItem.title} className="w-full h-full object-cover" />
           </div>
-          <div className="flex-1 ml-4 flex flex-col justify-center h-full">
+
+          <div key={currentItem.id + '-text'} className="flex-1 ml-4 flex flex-col justify-center h-full animate-fade-in-right">
             <div className="flex items-start justify-between mb-1">
               <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md">HOT</span>
               <span className="text-xs text-gray-400">{activeIndex + 1} / {featuredItems.length}</span>
             </div>
-            <h3 className="font-bold text-lg text-[#5D4037] line-clamp-2 leading-tight mb-2 animate-fade-in">{currentItem.title}</h3>
+
+            <h3 className="font-bold text-lg text-[#5D4037] line-clamp-2 leading-tight mb-2">
+              {currentItem.title}
+            </h3>
+
             <div className="mt-auto">
               <p className="text-xs text-gray-500 mb-1">{currentItem.author}</p>
               <div className="flex items-center justify-between">
@@ -115,69 +216,102 @@ const FeaturedCarousel = ({ items, onNavigate }) => {
             </div>
           </div>
         </div>
+
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
           {featuredItems.map((_, idx) => (
-            <div key={idx} className={`h-1 rounded-full transition-all duration-300 ${idx === activeIndex ? 'w-6 bg-[#756256]' : 'w-1.5 bg-gray-300'}`}></div>
+            <div
+              key={idx}
+              className={`h-1 rounded-full overflow-hidden transition-all duration-300 ${idx === activeIndex ? 'w-6 bg-gray-200' : 'w-1.5 bg-gray-300'}`}
+            >
+              {idx === activeIndex && (
+                <div className="h-full bg-[#756256] animate-progress-fill" style={{ width: '100%' }}></div>
+              )}
+            </div>
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes progress-fill {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .animate-progress-fill {
+          animation: progress-fill 4s linear;
+        }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.5s ease-out forwards;
+        }
+        @keyframes fade-in-right {
+          from { opacity: 0; transform: translateX(10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-fade-in-right {
+          animation: fade-in-right 0.5s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };
 
-const StudentDashboard = ({ coins, examCountdown }) => {
-  // Simplification: Direct display of the next exam from backend
+const ExamWidget = ({ examCountdown }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const exams = examCountdown?.exams || [];
   const currentExam = (exams.length > 0 && exams[selectedIndex]) ? exams[selectedIndex] : { title: (exams.length === 0 && examCountdown) ? '載入中...' : '無考試', daysLeft: 0 };
 
   return (
-    <div className="mx-4 mt-4 mb-6 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white p-3 rounded-xl border flex flex-col justify-between h-28 relative overflow-hidden" style={{ borderColor: COLORS.whiteBucks }}>
-          <div className="absolute top-0 right-0 w-16 h-16 bg-red-50 rounded-full -mr-6 -mt-6 z-0"></div>
-          <div className="relative z-10 h-full flex flex-col justify-between">
-            <div className="flex items-center gap-1 text-xs text-gray-500 font-bold mb-1">
-              <Calendar size={14} className="text-red-500" />
-              <span>校務考試</span>
-            </div>
-            <div className="flex items-baseline gap-1"><span className="text-4xl font-bold text-gray-800">{currentExam.daysLeft}</span><span className="text-xs text-gray-500">天</span></div>
-
-            <div className="relative">
-              <div className="text-[10px] text-gray-400 mt-1 truncate flex items-center gap-1 cursor-pointer hover:text-gray-600 transition-colors">
-                距離 {currentExam.title} <ChevronDown size={10} />
-              </div>
-              {exams.length > 1 && (
-                <select
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  value={selectedIndex}
-                  onChange={(e) => setSelectedIndex(Number(e.target.value))}
-                >
-                  {exams.map((exam, index) => (
-                    <option key={index} value={index}>{exam.title} ({exam.date.substring(4, 6)}/{exam.date.substring(6, 8)})</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className={`p-3 rounded-xl border flex flex-col justify-between h-28 relative overflow-hidden bg-white`} style={{ borderColor: COLORS.whiteBucks }}>
-          <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-50 rounded-full -mr-6 -mt-6 z-0"></div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex items-center justify-between"><div className="flex items-center gap-1 text-xs text-gray-500 font-bold"><Coins size={14} className="text-yellow-500" />書香幣</div><div className="text-xs font-bold text-[#756256]">{coins}</div></div>
-            <div className="text-center"><div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-1"><Gift size={20} className="text-yellow-600" /></div><div className="text-xs text-gray-600 font-bold">每日簽到領好禮</div></div>
-          </div>
-        </div>
+    <div className="h-full">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-red-500"><Calendar size={16} /></span>
+        <h2 className="text-lg font-bold tracking-wide" style={{ color: COLORS.brownWindmill }}>
+          貼心提醒
+        </h2>
       </div>
-      <div className="bg-white rounded-lg border px-3 py-2 flex items-center gap-3 shadow-sm" style={{ borderColor: COLORS.whiteBucks }}>
-        <div className="bg-red-50 text-red-500 p-1 rounded-md"><Zap size={14} fill="currentColor" /></div>
-        <div className="flex-1 overflow-hidden h-5 relative">
-          <div className="absolute animate-slide-up text-xs font-medium text-gray-600"><span className="font-bold text-[#756256] mr-1">3分鐘前</span>高二 208班 陳同學 上架了《物理講義》</div>
+      <div className="bg-white p-3 rounded-2xl border flex flex-col justify-between h-48 relative overflow-hidden shadow-md" style={{ borderColor: COLORS.whiteBucks }}>
+        <div className="absolute top-0 right-0 w-16 h-16 bg-red-50 rounded-full -mr-6 -mt-6 z-0"></div>
+        <div className="relative z-10 h-full flex flex-col justify-center items-center">
+          <div className="relative mb-2">
+            <div className="text-base text-gray-500 font-bold truncate flex items-center justify-center gap-1 cursor-pointer hover:text-gray-700 transition-colors">
+              距離 {currentExam.title} <ChevronDown size={14} />
+            </div>
+            {exams.length > 1 && (
+              <select
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                value={selectedIndex}
+                onChange={(e) => setSelectedIndex(Number(e.target.value))}
+              >
+                {exams.map((exam, index) => (
+                  <option key={index} value={index}>{exam.title} ({exam.displayDate || `${exam.date.substring(4, 6)}/${exam.date.substring(6, 8)}`})</option>
+                ))}
+              </select>
+            )}
+            <div className="text-xs text-gray-400 mt-1 text-center">
+              {currentExam.displayDate || currentExam.date}
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-7xl font-bold text-gray-800">{currentExam.daysLeft}</span>
+            <span className="text-lg text-gray-500">天</span>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+const TickerWidget = () => (
+  <div className="bg-white rounded-lg border px-3 py-2 flex items-center gap-3 shadow-sm" style={{ borderColor: COLORS.whiteBucks }}>
+    <div className="bg-red-50 text-red-500 p-1 rounded-md"><Zap size={14} fill="currentColor" /></div>
+    <div className="flex-1 overflow-hidden h-5 relative">
+      <div className="absolute animate-slide-up text-xs font-medium text-gray-600"><span className="font-bold text-[#756256] mr-1">3分鐘前</span>高二 208班 陳同學 上架了《物理講義》</div>
+    </div>
+  </div>
+);
+
 
 const WishingWell = ({ wishes, onAddWish, currentUser, currentAvatar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -229,20 +363,37 @@ const LoginPage = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [realName, setRealName] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [nickname, setNickname] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (isRegistering && !email.endsWith('@shsh.tw')) {
-      alert("僅限 @shsh.tw 校內信箱註冊！");
-      setIsLoading(false);
-      return;
+    if (isRegistering) {
+      if (!email.endsWith('@shsh.tw')) {
+        alert("僅限 @shsh.tw 校內信箱註冊！");
+        setIsLoading(false);
+        return;
+      }
+      if (!realName || !studentId || !nickname) {
+        alert("請填寫所有欄位（姓名、學號、暱稱）");
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {
       if (isRegistering) {
         await authService.signUp(email, password);
+        try {
+          await authService.completeProfile({ realName, studentId, nickname });
+          alert("註冊成功！");
+        } catch (profileError) {
+          console.error("Profile completion failed", profileError);
+          alert("註冊成功，但在建立個人資料時發生錯誤，請稍後聯繫管理員。");
+        }
         alert("註冊成功！請直接登入");
         setIsRegistering(false);
       } else {
@@ -263,74 +414,158 @@ const LoginPage = ({ onLogin }) => {
         <p className="text-sm mb-6" style={{ color: COLORS.brushwood }}>
           {isRegistering ? '加入我們，讓舊書重獲新生' : '讓閒置的講義，找到新的主人'}
         </p>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3 mb-4">
+          {isRegistering && (
+            <>
+              <input type="text" value={realName} onChange={e => setRealName(e.target.value)} placeholder="真實姓名 (不公開)" className="w-full p-3 border rounded-xl bg-gray-50" required />
+              <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="學號" className="w-full p-3 border rounded-xl bg-gray-50" required />
+              <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="顯示暱稱" className="w-full p-3 border rounded-xl bg-gray-50" required />
+            </>
+          )}
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (@shsh.tw)" className="w-full p-3 border rounded-xl" required />
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full p-3 border rounded-xl" required />
+
           <button type="submit" disabled={isLoading} className="w-full py-3 rounded-xl border-2 font-bold mb-3 hover:bg-gray-50 flex items-center justify-center gap-2" style={{ borderColor: COLORS.whiteBucks, color: COLORS.brownWindmill }}>
             {isLoading ? '處理中...' : (isRegistering ? '註冊' : '登入')}
           </button>
-          <div className="text-xs text-gray-400 cursor-pointer hover:underline" onClick={() => setIsRegistering(!isRegistering)}>
-            {isRegistering ? '已有帳號？登入' : '沒有帳號？點此註冊 (限用校內信箱)'}
-          </div>
         </form>
-      </div>
-    </div>
-  );
-};
-
-const ProductDetailPage = ({ product, onBack, onContact }) => {
-  if (!product) return null;
-  return (
-    <div className="min-h-screen pb-24 bg-white" style={fontStyle}>
-      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-4 py-3 bg-white/80 backdrop-blur-md border-b" style={{ borderColor: COLORS.whiteBucks }}>
-        <button onClick={onBack} className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"><ChevronLeft size={20} color={COLORS.brownWindmill} /></button>
-        <div className="flex gap-3"><button className="p-2 rounded-full hover:bg-gray-100"><Share2 size={20} color={COLORS.brownWindmill} /></button><button className="p-2 rounded-full hover:bg-gray-100"><Heart size={20} color={COLORS.brownWindmill} /></button></div>
-      </nav>
-      <div className="pt-16 pb-6">
-        <div className="aspect-[4/3] bg-gray-100 relative">
-          <img src={product.cover || product.imageBase64} alt={product.title} className="w-full h-full object-contain bg-[#F9F7F5]" />
-        </div>
-        <div className="px-5 mt-6">
-          <div className="flex gap-2 mb-2"><span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.subject}</span><span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.grade}</span></div>
-          <h1 className="text-2xl font-bold mb-1 leading-tight" style={{ color: COLORS.brownWindmill }}>{product.title}</h1>
-          <p className="text-sm text-gray-500 mb-4">{product.author} · {product.publisher}</p>
-          <div className="flex items-end gap-3 mb-6 pb-6 border-b" style={{ borderColor: COLORS.whiteBucks }}>
-            <PriceDisplay type={product.type} price={product.price} originalPrice={product.originalPrice} large />
-          </div>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-bold text-[#9E9081] mb-2">商品狀況</h3>
-              <p className="text-gray-700">{product.conditionLevel} · {product.location ? product.location : '面交'}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家描述</h3>
-              <p className="text-gray-700 leading-relaxed">{product.description || '賣家未提供詳細描述。'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t safe-area-bottom flex gap-3" style={{ borderColor: COLORS.whiteBucks }}>
-        <button onClick={onContact} className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2">
-          <MessageCircle size={18} /> 預訂/聯絡賣家
+        <button onClick={() => setIsRegistering(!isRegistering)} className="text-xs text-gray-400 hover:underline">
+          {isRegistering ? '已有帳號？登入' : '沒有帳號？點此註冊 (限用校內信箱)'}
         </button>
       </div>
     </div>
   );
 };
 
+// --- 商品詳情頁 ---
+const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
+  if (!product) return null;
+  const isOwner = (currentUser?.uid && product.sellerId && String(currentUser.uid) === String(product.sellerId)) ||
+    (currentUser?.studentId && product.seller?.studentId && currentUser.studentId === product.seller.studentId);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  return (
+    <div className="min-h-screen pb-24 bg-white" style={fontStyle}>
+      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-4 py-3 bg-white/80 backdrop-blur-md border-b" style={{ borderColor: COLORS.whiteBucks }}>
+        <button onClick={onBack} className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"><ChevronLeft size={20} color={COLORS.brownWindmill} /></button>
+        <div className="flex gap-3">
+          <button className="p-2 rounded-full hover:bg-gray-100"><Share2 size={20} color={COLORS.brownWindmill} /></button>
+          <button className="p-2 rounded-full hover:bg-gray-100"><Heart size={20} color={COLORS.brownWindmill} /></button>
+        </div>
+      </nav>
+
+      <div className="pt-16 pb-6 md:pt-20 md:pb-12 md:px-8 max-w-6xl mx-auto md:flex md:gap-10 md:items-start">
+        {/* Left: Image */}
+        <div className="aspect-[4/3] bg-gray-100 relative md:w-1/2 md:aspect-square md:rounded-2xl md:overflow-hidden md:shadow-sm md:sticky md:top-24">
+          <img src={product.cover || product.imageBase64 || "https://dummyimage.com/600x400/eee/aaa"} alt={product.title} className="w-full h-full object-contain bg-[#F9F7F5]" />
+        </div>
+
+        {/* Right: Details */}
+        <div className="px-5 mt-6 md:w-1/2 md:px-0 md:mt-0">
+          <div className="flex gap-2 mb-2">
+            <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.subject}</span>
+            {product.grade && product.grade !== '其他' && (
+              <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.grade}</span>
+            )}
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold mt-4 mb-2 leading-tight" style={{ color: COLORS.brownWindmill }}>{product.title}</h1>
+          <p className="text-sm text-gray-500 mb-4">{product.author} · {product.publisher}</p>
+
+          <div className="flex items-end gap-3 mb-6 pb-6 border-b" style={{ borderColor: COLORS.whiteBucks }}>
+            <PriceDisplay type={product.type} price={product.price} originalPrice={product.originalPrice} large />
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-bold text-[#9E9081] mb-2">商品狀況</h3>
+              <p className="text-gray-700 bg-gray-50 p-3 rounded-lg inline-block border border-gray-100">{product.conditionLevel}</p>
+              <p className="text-gray-700 mt-2">{product.location ? product.location : '面交'}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家描述</h3>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">{product.description || "賣家未提供詳細描述。"}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家資訊</h3>
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F9F7F5] border border-stone-100">
+                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white shadow-sm">
+                  <User size={24} className="text-gray-500" />
+                </div>
+                <div>
+                  <div className="font-bold text-[#756256] text-lg">
+                    {product.seller?.nickname || product.seller?.name || "未知賣家"}
+                    <span className="text-sm text-gray-500 font-normal ml-2">@{product.seller?.studentId || "未知學號"}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center gap-1">
+                    <Star size={12} fill="#fbbf24" className="text-yellow-400" />
+                    <span className="font-bold text-gray-700">{product.seller?.score || 5.0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Contact Button */}
+            {!isOwner && (
+              <div className="hidden md:block pt-4">
+                <button onClick={onContact} className="w-full py-4 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-lg">
+                  <MessageCircle size={20} /> 聯絡賣家 / 預訂
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sticky Bottom Bar */}
+      {!isOwner && (
+        <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t safe-area-bottom flex gap-3 md:hidden z-40" style={{ borderColor: COLORS.whiteBucks }}>
+          <button onClick={onContact} className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2">
+            <MessageCircle size={18} /> 聯絡賣家
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishes, onAddWish, books, isLoading, examCountdown }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterPublisher, setFilterPublisher] = useState('all');
 
-  const handleResetHome = () => { setFilterGrade('all'); setFilterSubject('all'); setFilterPublisher('all'); setSearchQuery(''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const handleResetHome = () => {
+    setFilterGrade('all');
+    setFilterSubject('all');
+    setFilterPublisher('all');
+    setSearchQuery('');
+    setSelectedCategory('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const filteredBooks = books.filter(book => {
     const query = searchQuery.toLowerCase();
-    const keywordMatch = !query.trim() || book.title.toLowerCase().includes(query);
-    // const gradeMatch = filterGrade === 'all' || book.grade === filterGrade; // Add grade field to upload if needed
-    return keywordMatch;
+    const keywordMatch = !query.trim() || book.title.toLowerCase().includes(query) || (book.author && book.author.toLowerCase().includes(query));
+
+    let categoryMatch = true;
+    if (selectedCategory !== 'all') {
+      if (selectedCategory === 'extra') {
+        categoryMatch = book.subject === '課外讀物' || book.publisher === '課外讀物';
+      } else if (selectedCategory === 'sci') {
+        categoryMatch = ['物理', '化學', '生物', '地科', '自然'].includes(book.subject);
+      } else if (selectedCategory === 'soc') {
+        categoryMatch = ['歷史', '地理', '公民', '社會'].includes(book.subject);
+      } else {
+        const catName = CATEGORIES.find(c => c.id === selectedCategory)?.name;
+        categoryMatch = book.subject === catName;
+      }
+    }
+
+    return keywordMatch && categoryMatch;
   });
 
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
@@ -357,27 +592,114 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
         </div>
       </div>
       <div className="max-w-6xl mx-auto px-4 -mt-6">
-        <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">{CATEGORIES.map(cat => (<button key={cat.id} className="whitespace-nowrap px-5 py-2 rounded-full text-sm tracking-wide shadow-sm transition-all border" style={{ backgroundColor: COLORS.bgLight, color: COLORS.brownWindmill, borderColor: COLORS.whiteBucks }}>{cat.name}</button>))}</div>
-        <StudentDashboard coins={coins} examCountdown={examCountdown} />
-        <WishingWell wishes={wishes} onAddWish={onAddWish} currentUser={user} currentAvatar={currentAvatar} />
+        <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar mb-4">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`whitespace-nowrap px-5 py-2 rounded-full text-sm tracking-wide shadow-sm transition-all border ${selectedCategory === cat.id ? 'bg-[#756256] text-white border-[#756256]' : 'bg-[#F9F7F5] text-[#756256] border-[#E8E3DF]'}`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* New Layout: Featured (Left) + Exam (Right) */}
+        {!searchQuery && selectedCategory === 'all' && (
+          <>
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex-1 min-w-0">
+                <FeaturedCarousel items={books} onNavigate={onNavigate} />
+              </div>
+              <div className="w-full md:w-[320px] flex-shrink-0">
+                <ExamWidget examCountdown={examCountdown} />
+              </div>
+            </div>
+
+            {/* Ticker below */}
+            <div className="mb-8">
+              <TickerWidget />
+            </div>
+
+            <WishingWell wishes={wishes} onAddWish={onAddWish} currentUser={user} currentAvatar={currentAvatar} />
+          </>
+        )}
         <div className="pb-8">
-          <div className="flex justify-between items-end mb-4 px-1 border-b pb-2" style={{ borderColor: COLORS.whiteBucks }}><h2 className="text-xl font-bold flex items-center gap-2 tracking-wide" style={{ color: COLORS.brownWindmill }}><Book size={20} style={{ color: COLORS.chocolateBubble }} />{searchQuery ? '搜尋結果' : '探索發現'}</h2></div>
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 animate-fade-in space-y-4">
-            {isLoading ? (Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />)) : filteredBooks.length > 0 ? (
-              filteredBooks.map((book) => (
-                <div key={book.id} onClick={() => onNavigate('product', book)} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all cursor-pointer break-inside-avoid mb-4 border" style={{ borderColor: COLORS.whiteBucks }}>
-                  <div className="relative" style={{ backgroundColor: COLORS.bgLight }}>
-                    <img src={book.cover || book.imageBase64} alt={book.title} className="w-full object-cover" />
-                    <div className={`absolute top-0 right-0 text-white text-[10px] px-3 py-1 rounded-bl-lg font-bold tracking-wider shadow-sm`} style={{ backgroundColor: COLORS.brownWindmill }}>{book.price}</div>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-bold text-sm leading-tight mb-1" style={{ color: COLORS.brownWindmill }}>{book.title}</h3>
-                    <div className="mt-auto border-t pt-2" style={{ borderColor: COLORS.whiteBucks }}><div className="flex items-end justify-between"><span className="font-bold">NT$ {book.price}</span></div></div>
+          {/* 標題區 */}
+          <div className="flex justify-between items-end mb-4 px-1 border-b pb-2" style={{ borderColor: COLORS.whiteBucks }}>
+            <h2 className="text-xl font-bold flex items-center gap-2 tracking-wide" style={{ color: COLORS.brownWindmill }}>
+              <Book size={20} style={{ color: COLORS.chocolateBubble }} />
+              {searchQuery || selectedCategory !== 'all' ? '搜尋結果' : '探索發現'}
+            </h2>
+          </div>
+
+          {/* 內容區：根據是否有資料決定渲染方式 */}
+          {isLoading ? (
+            /* 載入中：使用 Grid 顯示骨架屏 */
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full">
+                  <div className="aspect-square bg-gray-100 animate-pulse" />
+                  <div className="p-3 space-y-2 flex-1">
+                    <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2 animate-pulse" />
+                    <div className="mt-auto pt-2 border-t border-gray-50 flex justify-between">
+                      <div className="h-4 bg-gray-100 rounded w-1/3 animate-pulse" />
+                      <div className="h-4 bg-gray-100 rounded w-1/4 animate-pulse" />
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (<div className="col-span-full text-center py-12"><p>找不到符合的書籍</p></div>)}
-          </div>
+              ))}
+            </div>
+          ) : filteredBooks.length > 0 ? (
+            /* 有資料：使用 Grid 顯示書籍卡片 */
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
+              {filteredBooks.map((book) => (
+                <div key={book.id} onClick={() => onNavigate('product', book)} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all cursor-pointer border flex flex-col h-full group" style={{ borderColor: COLORS.whiteBucks }}>
+                  {/* Image Area - Square Aspect Ratio */}
+                  <div className="relative aspect-square bg-[#F9F7F5] overflow-hidden">
+                    <img src={book.cover || book.imageBase64 || "https://dummyimage.com/400x400/eee/aaa"} alt={book.title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+                    {/* Badge */}
+                    <div className="absolute top-0 right-0 px-2 py-1 text-white text-[10px] font-bold shadow-sm rounded-bl-lg z-10" style={{ backgroundColor: COLORS.brownWindmill }}>
+                      {book.type === 'give' ? '贈送' : '販售'}
+                    </div>
+                  </div>
+
+                  {/* Content Area */}
+                  <div className="p-3 flex flex-col flex-1">
+                    <h3 className="font-bold text-[#756256] text-sm leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{book.title}</h3>
+
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.subject}</span>
+                      {book.grade && book.grade !== '其他' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.grade}</span>}
+                    </div>
+
+                    <div className="mt-auto flex items-end justify-between border-t pt-2 border-[#E8E3DF]">
+                      <div>
+                        <div className="text-[10px] text-gray-400 mb-0.5">{book.type === 'give' ? '好心人' : '好書'}</div>
+                        <div className="font-bold text-lg text-[#756256] leading-none">NT$ {book.price}</div>
+                      </div>
+                      <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                        <span>@{book.seller?.nickname || '同學'}</span>
+                        <Heart size={10} className="text-red-400 fill-red-400" /> <span className="font-bold text-red-400">12</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* 沒資料：獨立的 Flex 容器，確保絕對置中 */
+            <div className="flex flex-col items-center justify-center py-20 w-full animate-fade-in text-center col-span-full">
+              <p className="text-gray-500 text-lg font-medium mb-6">找不到符合書籍</p>
+              <button
+                onClick={handleResetHome}
+                className="px-8 py-3 rounded-xl bg-[#756256] text-white font-bold hover:bg-[#5D4E44] transition-all transform hover:-translate-y-1 shadow-md flex items-center gap-2"
+              >
+                <Home size={18} /> 返回主頁
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -390,24 +712,109 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
   const [myListings, setMyListings] = useState(INITIAL_MY_LISTINGS);
   const [sellForm, setSellForm] = useState({
-    title: '', author: '', price: '', conditionLevel: '九成新', images: []
+    title: '',
+    bookType: 'textbook',
+    gradeLevel: '',
+    subject: '',
+    transactionType: 'sell',
+    price: '',
+    conditionLevel: '九成新',
+    description: '',
+    coverImagePreview: null
   });
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleUpload = () => {
-    alert("上架成功！(模擬)");
-    const newItem = {
-      id: Date.now(),
-      title: sellForm.title || "未命名書籍",
-      price: sellForm.price || 0,
-      type: 'sell',
-      status: 'active',
-      date: new Date().toLocaleDateString(),
-      views: 0,
-      cover: "https://im1.book.com.tw/image/getImage?i=https://www.books.com.tw/img/001/086/56/0010865620.jpg&v=5f2a7a5dk&w=348&h=348"
-    };
-    setMyListings([newItem, ...myListings]);
-    setTab('shelf');
-    setSellForm({ title: '', author: '', price: '', conditionLevel: '九成新', images: [] });
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = bookService.getMyBooks(user.uid, (books) => {
+        setMyListings(books);
+      });
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSellForm({ ...sellForm, coverImagePreview: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!sellForm.coverImagePreview) {
+      alert("請上傳書籍封面！");
+      return;
+    }
+    if (!sellForm.title) {
+      alert("請填寫書籍名稱！");
+      return;
+    }
+    if (sellForm.transactionType === 'sell' && !sellForm.price) {
+      alert("請填寫售價！");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const bookData = {
+        title: sellForm.title,
+        author: '未提供',
+        publisher: sellForm.bookType === 'textbook' ? '教科書' : '課外讀物',
+        subject: sellForm.bookType === 'textbook' ? sellForm.subject : '課外讀物',
+        grade: sellForm.bookType === 'textbook' ? sellForm.gradeLevel : '其他',
+        price: sellForm.transactionType === 'gift' ? 0 : Number(sellForm.price),
+        type: sellForm.transactionType === 'gift' ? 'gift' : 'sell',
+        conditionLevel: sellForm.conditionLevel,
+        description: sellForm.description,
+        sellerId: user.uid,
+        seller: {
+          nickname: user.nickname || user.email,
+          studentId: user.studentId || '未知',
+          score: user.creditScore || 5.0
+        },
+        cover: sellForm.coverImagePreview,
+        imageBase64: sellForm.coverImagePreview,
+        timestamp: new Date()
+      };
+
+      await bookService.addBook(bookData);
+      alert("上架成功！");
+      setTab('shelf');
+      setSellForm({
+        title: '',
+        bookType: 'textbook',
+        gradeLevel: '',
+        subject: '',
+        transactionType: 'sell',
+        price: '',
+        conditionLevel: '九成新',
+        description: '',
+        coverImagePreview: null
+      });
+    } catch (error) {
+      console.error("上架失敗:", error);
+      alert("上架失敗: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteBook = async (bookId, e) => {
+    e.stopPropagation(); // Prevent card click
+    if (window.confirm("是否確定要下架該書籍?")) {
+      try {
+        await bookService.deleteBook(bookId);
+        alert("已下架");
+        // State update is handled by onSnapshot, ensuring UI syncs with DB
+      } catch (error) {
+        console.error("Deletion failed:", error);
+        alert("下架失敗: " + error.message);
+      }
+    }
   };
 
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
@@ -450,28 +857,165 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
         {/* Content */}
         {tab === 'upload' ? (
           <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4 animate-fade-in" style={{ borderColor: COLORS.whiteBucks }}>
-            <div className="text-center p-6 border-2 border-dashed rounded-lg bg-[#F9F7F5] cursor-pointer" style={{ borderColor: COLORS.fossilGray }}>
-              <ImageIcon className="mx-auto text-[#9E9081] mb-2" />
-              <span className="text-sm text-[#756256]">點擊上傳封面照片</span>
-            </div>
+            {/* 1. 封面上傳 */}
             <div>
-              <label className="block text-xs font-bold text-[#9E9081] mb-1">書籍名稱</label>
-              <input type="text" value={sellForm.title} onChange={e => setSellForm({ ...sellForm, title: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-50 text-sm" placeholder="例如：龍騰高一英文" />
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">上傳書籍封面 *</label>
+              <input type="file" id="cover-upload" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              <label htmlFor="cover-upload" className="block text-center p-8 border-2 border-dashed rounded-lg bg-[#F9F7F5] cursor-pointer hover:bg-[#E6DBC6] transition-colors" style={{ borderColor: COLORS.fossilGray }}>
+                {sellForm.coverImagePreview ? (
+                  <img src={sellForm.coverImagePreview} alt="預覽" className="max-h-48 mx-auto rounded" />
+                ) : (
+                  <>
+                    <ImageIcon className="mx-auto text-[#9E9081] mb-2" size={32} />
+                    <span className="text-sm text-[#756256]">點擊上傳封面照片</span>
+                  </>
+                )}
+              </label>
             </div>
+
+            {/* 2. 書籍名稱 */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">書籍名稱 *</label>
+              <input
+                type="text"
+                value={sellForm.title}
+                onChange={e => setSellForm({ ...sellForm, title: e.target.value })}
+                className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                placeholder="例如：龍騰高一上冊英文三合一"
+                required
+              />
+            </div>
+            {/* 3. 書籍分類 */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">書籍分類 *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, bookType: 'textbook' })}
+                  className={`py-1.5 px-4 rounded-lg font-bold transition-colors ${sellForm.bookType === 'textbook'
+                    ? 'bg-[#756256] text-white' // 選中時：深咖啡底白字
+                    : 'bg-[#F2F0EE] text-[#9E9081] hover:bg-[#E8E3DF]' // 未選中：淺灰底暗灰字，無外框
+                    }`}
+                >
+                  教科書
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, bookType: 'extracurricular' })}
+                  className={`py-1.5 px-4 rounded-lg font-bold transition-colors ${sellForm.bookType === 'extracurricular'
+                    ? 'bg-[#756256] text-white' // 選中時：深咖啡底白字
+                    : 'bg-[#F2F0EE] text-[#9E9081] hover:bg-[#E8E3DF]' // 未選中：淺灰底暗灰字，無外框
+                    }`}
+                >
+                  課外讀物
+                </button>
+              </div>
+            </div>
+            {/* 4. 年級和科目 (僅教科書) */}
+            {sellForm.bookType === 'textbook' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-[#9E9081] mb-2">年級</label>
+                  <select
+                    value={sellForm.gradeLevel}
+                    onChange={e => setSellForm({ ...sellForm, gradeLevel: e.target.value })}
+                    className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                  >
+                    <option value="">選擇年級</option>
+                    <option value="國中">國中</option>
+                    <option value="高中">高中</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#9E9081] mb-2">科目</label>
+                  <select
+                    value={sellForm.subject}
+                    onChange={e => setSellForm({ ...sellForm, subject: e.target.value })}
+                    className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                  >
+                    <option value="">選擇科目</option>
+                    <option value="國文">國文</option>
+                    <option value="數學">數學</option>
+                    <option value="英文">英文</option>
+                    <option value="自然">自然</option>
+                    <option value="社會">社會</option>
+                  </select>
+                </div>
+              </div>
+            )}
+            {/* 5. 交易方式 */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">交易方式 *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, transactionType: 'sell' })}
+                  className={`py-1.5 px-4 rounded-lg font-bold transition-colors ${sellForm.transactionType === 'sell'
+                    ? 'bg-[#756256] text-white' // 選中時：深咖啡底白字
+                    : 'bg-[#F2F0EE] text-[#9E9081] hover:bg-[#E8E3DF]' // 未選中：淺灰底暗灰字，無外框
+                    }`}
+                >
+                  販售
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSellForm({ ...sellForm, transactionType: 'gift', price: '0' })}
+                  className={`py-1.5 px-4 rounded-lg font-bold transition-colors ${sellForm.transactionType === 'gift'
+                    ? 'bg-[#756256] text-white' // 選中時：深咖啡底白字
+                    : 'bg-[#F2F0EE] text-[#9E9081] hover:bg-[#E8E3DF]' // 未選中：淺灰底暗灰字，無外框
+                    }`}
+                >
+                  贈送
+                </button>
+              </div>
+            </div>
+
+            {/* 6. 售價和書況 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-[#9E9081] mb-1">售價 (NT$)</label>
-                <input type="number" value={sellForm.price} onChange={e => setSellForm({ ...sellForm, price: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-50 text-sm" placeholder="100" />
+                <label className="block text-sm font-bold text-[#9E9081] mb-2">
+                  售價 (NT$) {sellForm.transactionType === 'sell' && '*'}
+                </label>
+                <input
+                  type="number"
+                  value={sellForm.price}
+                  onChange={e => setSellForm({ ...sellForm, price: e.target.value })}
+                  className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                  placeholder="100"
+                  disabled={sellForm.transactionType === 'gift'}
+                  required={sellForm.transactionType === 'sell'}
+                />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#9E9081] mb-1">書況</label>
-                <select value={sellForm.conditionLevel} onChange={e => setSellForm({ ...sellForm, conditionLevel: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-50 text-sm">
+                <label className="block text-sm font-bold text-[#9E9081] mb-2">書況</label>
+                <select
+                  value={sellForm.conditionLevel}
+                  onChange={e => setSellForm({ ...sellForm, conditionLevel: e.target.value })}
+                  className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
+                >
                   {CONDITION_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
             </div>
-            <button onClick={handleUpload} className="w-full py-3 bg-[#756256] text-white rounded-xl font-bold shadow-md hover:bg-[#5D4E44] transition-colors">
-              確認上架
+
+            {/* 7. 描述 (選填) */}
+            <div>
+              <label className="block text-sm font-bold text-[#9E9081] mb-2">描述 (選填)</label>
+              <textarea
+                value={sellForm.description}
+                onChange={e => setSellForm({ ...sellForm, description: e.target.value })}
+                className="w-full p-3 border rounded-lg bg-gray-50 text-sm h-24 resize-none"
+                placeholder="請描述書籍狀況..."
+              />
+            </div>
+
+            {/* 上架按鈕 */}
+            <button
+              onClick={handleUpload}
+              disabled={isUploading}
+              className="w-full py-3 bg-[#756256] text-white rounded-xl font-bold shadow-md hover:bg-[#5D4E44] transition-colors disabled:opacity-50"
+            >
+              {isUploading ? '上架中...' : '確認上架'}
             </button>
           </div>
         ) : tab === 'store' ? (
@@ -534,7 +1078,7 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
                       <span>{item.views} 次瀏覽</span> · <span>{item.date}</span>
                     </div>
                   </div>
-                  <button onClick={() => setMyListings(myListings.filter(i => i.id !== item.id))} className="p-2 text-red-400 hover:bg-red-50 rounded-full">
+                  <button onClick={(e) => handleDeleteBook(item.id, e)} className="p-2 text-red-400 hover:bg-red-50 rounded-full">
                     <Trash2 size={18} />
                   </button>
                 </div>
@@ -601,14 +1145,14 @@ const App = () => {
     const unsubscribe = authService.onAuthStateChanged((user) => {
       if (user) {
         // Initial user set (might be incomplete)
-        setCurrentUser({ ...user, nickname: user.email.split('@')[0] });
+        setCurrentUser({ uid: user.uid, email: user.email, ...user, nickname: user.email.split('@')[0] });
         setCurrentPage('home');
 
         // Listen to Real User Profile
         unsubProfile = authService.onProfileSnapshot(user.uid, (doc) => {
           if (doc.exists) {
             const data = doc.data();
-            setCurrentUser(prev => ({ ...prev, ...data }));
+            setCurrentUser(prev => ({ ...prev, ...data, uid: user.uid })); // Ensure uid persists
             setCoins(data.coins || 0);
             setMyAvatars(data.myAvatars || ['default']);
 
@@ -631,10 +1175,12 @@ const App = () => {
         });
 
         // Fetch books (Global)
-        unsubBooks = bookService.onBooksSnapshot((snapshot) => {
-          const loadedBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setBooks(loadedBooks);
+        unsubBooks = bookService.onBooksSnapshot((books) => {
+          setBooks(books);
           setIsLoading(false);
+        }, (error) => {
+          console.error("Global books fetch failed:", error);
+          setIsLoading(false); // Stop loading even on error
         });
 
       } else {

@@ -12,7 +12,7 @@ exports.getExamCountdown = functions.https.onCall((data, context) => {
 
         log(`Starting download via https: ${calendarUrl}`);
 
-        const TIMEOUT_MS = 5000;
+        const TIMEOUT_MS = 10000;
         let isHandled = false;
 
         const request = https.get(calendarUrl, (res) => {
@@ -54,9 +54,10 @@ function getFallbackExams() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const mockExams = [
-        { title: "高三第三次定期評量", date: "20260108" },
-        { title: "第三次定期評量", date: "20260116" },
-        { title: "第三次定期評量", date: "20260119" }
+        { title: "高三第三次定期評量", date: "20260108", displayDate: "01/08-01/09" },
+        { title: "第三次定期評量", date: "20260116", displayDate: "01/16-01/19" },
+        { title: "學科能力測驗", date: "20260117", displayDate: "01/17-01/19" },
+        { title: "第三次定期評量", date: "20260119", displayDate: "01/16-01/19" }
     ];
 
     // Calculate days left for fallback
@@ -73,7 +74,8 @@ function getFallbackExams() {
         return {
             title: exam.title,
             date: exam.date,
-            daysLeft: Math.max(0, daysLeft)
+            daysLeft: Math.max(0, daysLeft),
+            displayDate: exam.displayDate || `${(m + 1).toString().padStart(2, '0')}/${d.toString().padStart(2, '0')}`
         };
     }).sort((a, b) => a.daysLeft - b.daysLeft); // Keep nearest first
 

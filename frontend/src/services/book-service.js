@@ -3,11 +3,24 @@ import axios from 'axios';
 
 export const bookService = {
     // 取得書籍列表 (即時監聽)
-    onBooksSnapshot(callback) {
-        return db.collection('books').onSnapshot(snapshot => {
+    onBooksSnapshot(callback, errorCallback) {
+        return db.collection('books').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
             const books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             callback(books);
+        }, error => {
+            console.error("Books snapshot error:", error);
+            if (errorCallback) errorCallback(error);
         });
+    },
+    // 取得我的書籍 (即時監聽)
+    getMyBooks(uid, callback) {
+        return db.collection('books')
+            .where('sellerId', '==', uid)
+            .orderBy('timestamp', 'desc')
+            .onSnapshot(snapshot => {
+                const books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                callback(books);
+            });
     },
     // 上架書籍
     async createBook(bookData) {
