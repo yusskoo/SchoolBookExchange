@@ -3,7 +3,7 @@ import {
   Heart, MessageCircle, Share2, Star, AlertCircle, ShoppingCart,
   User, CheckCircle, MapPin, ThumbsUp, Send, Search, Bell,
   BookOpen, Filter, ArrowRight, Menu, Home, Lock, Mail, ChevronDown, Camera,
-  Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight
+  Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight, ExternalLink
 } from 'lucide-react';
 import { authService } from './services/auth-service';
 import { bookService } from './services/book-service';
@@ -145,7 +145,7 @@ const INITIAL_NOTIFICATIONS = [
 // --- Helper Functions ---
 const PriceDisplay = ({ type, price, originalPrice, large = false }) => {
   if (type === 'exchange') return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.brushwood }}><Repeat size={large ? 20 : 14} /><span>想交換</span></div>;
-  if (type === 'gift') return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.chocolateBubble }}><Gift size={large ? 20 : 14} /><span>贈送</span></div>;
+  if (type === 'gift' || price === 0) return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.chocolateBubble }}><Gift size={large ? 20 : 14} /><span>贈送</span></div>;
   return <div className="flex flex-col"><div className={`font-bold ${large ? 'text-3xl' : 'text-lg'}`} style={{ color: COLORS.brownWindmill }}>NT$ {price}</div>{originalPrice && <span className="text-xs line-through" style={{ color: COLORS.fossilGray }}>原價 ${originalPrice}</span>}</div>;
 };
 
@@ -155,6 +155,34 @@ const SkeletonCard = () => (
     <div className="p-4 space-y-3"><div className="h-4 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div></div>
   </div>
 );
+
+const compressImage = (base64Str, maxWidth = 800, maxHeight = 800) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress to 60% quality JPEG
+    };
+  });
+};
 
 // --- [組件] 自動輪播精選區 ---
 const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
@@ -272,10 +300,14 @@ const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
             </h3>
 
             <div className="mt-auto">
-              <p className="text-xs text-gray-500 mb-1">{currentItem.author}</p>
+              <div className="flex flex-wrap gap-1 mb-2">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{currentItem.grade || '不分年級'}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{currentItem.subject}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{currentItem.conditionLevel}</span>
+              </div>
               <div className="flex items-center justify-between">
                 <PriceDisplay type={currentItem.type} price={currentItem.price} originalPrice={currentItem.originalPrice} />
-                <div className="w-8 h-8 rounded-full bg-[#756256] text-white flex items-center justify-center shadow-md transform translate-x-10 group-hover:translate-x-0 transition-transform duration-300">
+                <div className="w-8 h-8 rounded-full bg-[#756256] text-white flex items-center justify-center shadow-md transform translate-x-16 group-hover:translate-x-0 transition-all duration-300 opacity-0 group-hover:opacity-100">
                   <ArrowRight size={16} />
                 </div>
               </div>
@@ -339,13 +371,22 @@ const ExamWidget = ({ examCountdown }) => {
   return (
     <div className="h-full">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-red-500"><Calendar size={16} /></span>
+        <span className="bg-red-500 text-white p-1 rounded-full">
+          <Calendar size={16} />
+        </span>
         <h2 className="text-lg font-bold tracking-wide" style={{ color: COLORS.brownWindmill }}>
           貼心提醒
         </h2>
       </div>
       <div className="bg-white p-3 rounded-2xl border flex flex-col justify-between h-48 relative overflow-hidden shadow-md" style={{ borderColor: COLORS.whiteBucks }}>
-        <div className="absolute top-0 right-0 w-16 h-16 bg-red-50 rounded-full -mr-6 -mt-6 z-0"></div>
+        <a
+          href="https://calendar.google.com/calendar/embed?src=shsh.ylc.edu.tw_fcpdcjkto9mpulh1gg2eetr4s4%40group.calendar.google.com&ctz=Asia%2FTaipei"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute top-0 right-0 w-12 h-12 bg-red-50 rounded-bl-2xl z-20 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-100 transition-colors cursor-pointer"
+        >
+          <ExternalLink size={18} />
+        </a>
         <div className="relative z-10 h-full flex flex-col justify-center items-center">
           <div className="relative mb-2">
             <div className="text-base text-gray-500 font-bold truncate flex items-center justify-center gap-1 cursor-pointer hover:text-gray-700 transition-colors">
@@ -367,8 +408,8 @@ const ExamWidget = ({ examCountdown }) => {
             </div>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-7xl font-bold text-gray-800">{currentExam.daysLeft}</span>
-            <span className="text-lg text-gray-500">天</span>
+            <span className="text-7xl font-bold text-[#756256]">{currentExam.daysLeft}</span>
+            <span className="text-lg text-[#756256]">天</span>
           </div>
         </div>
       </div>
@@ -389,41 +430,168 @@ const TickerWidget = () => (
 const WishingWell = ({ wishes, onAddWish, currentUser, currentAvatar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [content, setContent] = useState('');
+  const [wishImage, setWishImage] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Calculate pages
+  const totalPages = Math.ceil(wishes.length / itemsPerPage);
+  const currentWishes = wishes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result, 600, 600); // Wishes can be smaller
+        setWishImage(compressed);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = () => {
-    if (!content.trim()) return;
-    onAddWish(content);
+    if (!content.trim() && !wishImage) return;
+    onAddWish(content, wishImage);
     setContent('');
+    setWishImage(null);
     setIsModalOpen(false);
+    setCurrentPage(1); // Reset to first page on new wish
   };
 
   return (
     <div className="mb-8 px-4">
-      <div className="flex items-center gap-2 mb-3"><span className="bg-yellow-400 text-white p-1 rounded-full"><Sparkles size={16} fill="currentColor" /></span><h2 className="text-lg font-bold tracking-wide" style={{ color: COLORS.brownWindmill }}>許願池</h2></div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="bg-yellow-400 text-white p-1 rounded-full"><Sparkles size={16} fill="currentColor" /></span>
+          <h2 className="text-lg font-bold tracking-wide" style={{ color: COLORS.brownWindmill }}>許願池</h2>
+        </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-sm">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent text-gray-500"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-gray-500 font-bold px-1">{currentPage} / {totalPages}</span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent text-gray-500"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+      </div>
       <div className="bg-white rounded-xl shadow-sm border p-4 space-y-3" style={{ borderColor: COLORS.whiteBucks }}>
 
-        {wishes.map(wish => {
+        {currentWishes.map(wish => {
           const avatar = AVATAR_LIST.find(a => a.id === wish.avatarId) || AVATAR_LIST[0];
           return (
             <div key={wish.id} className="flex gap-3 border-b last:border-0 pb-3 last:pb-0" style={{ borderColor: COLORS.bgLight }}>
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                 <img src={avatar.src} alt="avatar" className="w-full h-full object-cover" />
               </div>
-              <div className="flex-1"><div className="flex justify-between items-center mb-1"><span className="text-sm font-bold text-[#756256]">{wish.user}</span><span className="text-xs font-normal text-gray-400">{wish.time}</span></div><p className="text-sm text-[#9E9081]">{wish.content}</p></div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-bold text-[#756256]">{wish.user}</span>
+                  <span className="text-xs font-normal text-gray-400">{wish.time}</span>
+                </div>
+                <p className="text-sm text-[#9E9081]">{wish.content}</p>
+                {wish.image && (
+                  <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 h-24 inline-block bg-gray-50">
+                    <img
+                      src={wish.image}
+                      alt="wish thumbnail"
+                      onClick={() => setPreviewImage(wish.image)}
+                      className="h-full w-auto object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
         <button onClick={() => setIsModalOpen(true)} className="w-full py-2 mt-2 text-xs font-bold text-[#9E9081] border border-dashed hover:bg-[#F9F7F5] rounded-lg transition-colors flex items-center justify-center gap-1" style={{ borderColor: COLORS.fossilGray }}><Plus size={14} /> 我也想許願</button>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            className="absolute top-6 right-6 text-white hover:text-gray-300 transition-colors z-10 p-2"
+            onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }}
+          >
+            <X size={32} />
+          </button>
+          <img
+            src={previewImage}
+            alt="full preview"
+            className="max-w-full max-h-full object-contain rounded animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-md rounded-xl overflow-hidden shadow-2xl animate-scale-up flex flex-col h-[60vh] md:h-auto">
-            <div className="flex justify-between items-center p-3 border-b" style={{ borderColor: COLORS.whiteBucks }}><button onClick={() => setIsModalOpen(false)} className="p-1"><X size={24} className="text-gray-600" /></button><span className="font-bold text-[#756256] text-lg">建立許願</span><button onClick={handleSubmit} className="text-blue-500 font-bold text-sm px-2 py-1 rounded hover:bg-blue-50 disabled:opacity-50 disabled:hover:bg-transparent" disabled={!content.trim()}>發佈</button></div>
-            <div className="p-4 flex flex-col flex-1">
-              <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100"><img src={currentAvatar.src} alt="avatar" className="w-full h-full object-cover" /></div><span className="font-bold text-[#5D4037]">{currentUser.nickname || currentUser.email}</span></div>
-              <textarea className="flex-1 w-full resize-none outline-none text-[#5D4037] placeholder-gray-400 text-lg leading-relaxed" placeholder="寫下你想找的書或是筆記..." value={content} onChange={(e) => setContent(e.target.value)} autoFocus />
+          <div className="bg-white w-full max-w-md rounded-xl overflow-hidden shadow-2xl animate-scale-up flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-3 border-b" style={{ borderColor: COLORS.whiteBucks }}><button onClick={() => setIsModalOpen(false)} className="p-1"><X size={24} className="text-gray-600" /></button><span className="font-bold text-[#756256] text-lg">建立許願</span><button onClick={handleSubmit} className="text-blue-500 font-bold text-sm px-2 py-1 rounded hover:bg-blue-50 disabled:opacity-50 disabled:hover:bg-transparent" disabled={!content.trim() && !wishImage}>發佈</button></div>
+            <div className="p-4 flex flex-col flex-1 overflow-y-auto">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
+                  <img src={currentAvatar.src} alt="avatar" className="w-full h-full object-cover" />
+                </div>
+                <span className="font-bold text-[#5D4037]">{currentUser.nickname || currentUser.email}</span>
+              </div>
+              <textarea
+                className="w-full resize-none outline-none text-[#5D4037] placeholder-gray-400 text-lg leading-relaxed min-h-[100px]"
+                placeholder="寫下你想找的書或是筆記..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                autoFocus
+              />
+              {wishImage && (
+                <div className="relative mt-2 rounded-lg overflow-hidden border border-gray-100 group">
+                  <img src={wishImage} alt="preview" className="w-full h-auto" />
+                  <button
+                    onClick={() => setWishImage(null)}
+                    className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="p-3 border-t bg-gray-50 flex gap-4 text-gray-400"><Camera size={20} className="cursor-pointer hover:text-[#756256] transition-colors" /><Tag size={20} className="cursor-pointer hover:text-[#756256] transition-colors" /></div>
+            <div className="p-3 border-t bg-gray-50 flex gap-4 text-gray-400">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+              <button
+                onClick={() => fileInputRef.current.click()}
+                className="p-1 hover:text-[#756256] transition-colors"
+              >
+                <Camera size={20} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -560,10 +728,8 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
         {/* Right: Details */}
         <div className="px-5 mt-6 md:w-1/2 md:px-0 md:mt-0">
           <div className="flex gap-2 mb-2">
+            <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.grade}</span>
             <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.subject}</span>
-            {product.grade && product.grade !== '其他' && (
-              <span className="text-xs font-bold px-2 py-1 rounded bg-[#F9F7F5] text-[#9E9081]">{product.grade}</span>
-            )}
           </div>
           <h1 className="text-2xl md:text-3xl font-bold mt-4 mb-2 leading-tight" style={{ color: COLORS.brownWindmill }}>{product.title}</h1>
 
@@ -576,8 +742,10 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-bold text-[#9E9081]">商品狀況</h3>
-                <div className="text-xs text-gray-400">
-                  上架時間：{(() => {
+                <div className="text-xs text-gray-400 flex items-center gap-2">
+                  <span>{product.views || 0} 次瀏覽</span>
+                  <span>·</span>
+                  <span className="whitespace-nowrap">上架時間：{(() => {
                     const date = product.timestamp?.toDate ? product.timestamp.toDate() : new Date(product.timestamp || 0);
                     // Format: yyyy-MM-DD HH:mm
                     const year = date.getFullYear();
@@ -586,7 +754,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
                     const hour = String(date.getHours()).padStart(2, '0');
                     const min = String(date.getMinutes()).padStart(2, '0');
                     return `${year}-${month}-${day} ${hour}:${min}`;
-                  })()}
+                  })()}</span>
                 </div>
               </div>
               <p className="text-gray-700 bg-gray-50 p-3 rounded-lg inline-block border border-gray-100">{product.conditionLevel}</p>
@@ -605,7 +773,6 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
                 <div>
                   <div className="font-bold text-[#756256] text-lg">
                     {sellerProfile?.nickname || product.seller?.nickname || product.seller?.name}
-                    <span className="text-sm text-gray-500 font-normal ml-2">@{sellerProfile?.studentId || product.seller?.studentId}</span>
                   </div>
                   <div className="text-xs text-gray-500 flex items-center gap-1">
                     <Star size={12} fill="#fbbf24" className="text-yellow-400" />
@@ -645,6 +812,8 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
   const [filterGrade, setFilterGrade] = useState('all');
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterPublisher, setFilterPublisher] = useState('all');
+  const [productPage, setProductPage] = useState(1);
+  const productsPerPage = 20; // 5 columns * 4 rows
 
   const handleResetHome = () => {
     setFilterGrade('all');
@@ -652,31 +821,58 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
     setFilterPublisher('all');
     setSearchQuery('');
     setSelectedCategory('all');
+    setProductPage(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const filteredBooks = books.filter(book => {
-    const query = searchQuery.toLowerCase();
-    const keywordMatch = !query.trim() || book.title.toLowerCase().includes(query) || (book.author && book.author.toLowerCase().includes(query));
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setProductPage(1);
+  }, [searchQuery, selectedCategory]);
 
-    let categoryMatch = true;
-    if (selectedCategory !== 'all') {
-      if (selectedCategory === 'extra') {
-        categoryMatch = book.subject === '課外讀物' || book.publisher === '課外讀物';
-      } else if (selectedCategory === 'sci') {
-        categoryMatch = ['物理', '化學', '生物', '地科', '自然'].includes(book.subject);
-      } else if (selectedCategory === 'soc') {
-        categoryMatch = ['歷史', '地理', '公民', '社會'].includes(book.subject);
-      } else {
-        const catName = CATEGORIES.find(c => c.id === selectedCategory)?.name;
-        categoryMatch = book.subject === catName;
+  const sortedFilteredBooks = books
+    .filter(book => {
+      const query = searchQuery.toLowerCase();
+      const keywordMatch = !query.trim() || book.title.toLowerCase().includes(query) || (book.author && book.author.toLowerCase().includes(query));
+
+      let categoryMatch = true;
+      if (selectedCategory !== 'all') {
+        if (selectedCategory === 'extra') {
+          categoryMatch = book.subject === '課外讀物' || book.publisher === '課外讀物';
+        } else if (selectedCategory === 'sci') {
+          categoryMatch = ['物理', '化學', '生物', '地科', '自然'].includes(book.subject);
+        } else if (selectedCategory === 'soc') {
+          categoryMatch = ['歷史', '地理', '公民', '社會'].includes(book.subject);
+        } else {
+          const catName = CATEGORIES.find(c => c.id === selectedCategory)?.name;
+          categoryMatch = book.subject === catName;
+        }
       }
-    }
 
-    return keywordMatch && categoryMatch;
-  });
+      return keywordMatch && categoryMatch;
+    })
+    .sort((a, b) => {
+      const tA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+      const tB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+      return tB - tA;
+    });
+
+  const totalProductPages = Math.ceil(sortedFilteredBooks.length / productsPerPage);
+  const currentProducts = sortedFilteredBooks.slice(
+    (productPage - 1) * productsPerPage,
+    productPage * productsPerPage
+  );
 
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
+  const productSectionRef = useRef(null);
+
+  const scrollToProductSection = () => {
+    if (productSectionRef.current) {
+      const yOffset = -80; // Header offset
+      const y = productSectionRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="min-h-screen pb-20" style={{ ...fontStyle, backgroundColor: COLORS.bgLight, color: COLORS.brownWindmill }}>
@@ -686,7 +882,6 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
             <div className="flex items-center gap-2"><div className="w-8 h-8 backdrop-blur rounded-sm flex items-center justify-center font-bold font-serif" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>校</div><span className="text-xl font-bold tracking-widest">循環平台</span></div>
             <div className="flex items-center gap-3">
               <button onClick={handleResetHome} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Home size={20} /></button>
-              <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/20 border border-white/10 text-white text-xs font-bold shadow-sm backdrop-blur-sm"><Coins size={14} className="text-yellow-400" fill="currentColor" /><span>{coins}</span></div>
               <button onClick={() => onNavigate('notifications')} className="relative p-2 hover:bg-white/10 rounded-full transition-colors"><Bell size={20} />{unreadCount > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>
               <button onClick={() => onNavigate('profile')} className="flex items-center gap-2 hover:bg-white/20 pl-1 pr-3 py-1 rounded-full transition-all border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-white/20"><img src={currentAvatar.src} alt="avatar" className="w-full h-full object-cover" /></div><span className="hidden sm:inline text-sm font-medium tracking-wide">{user.nickname || user.email}</span></button>
             </div>
@@ -731,7 +926,7 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
         )}
         <div className="pb-8">
           {/* 標題區 */}
-          <div className="flex justify-between items-end mb-4 px-1 border-b pb-2" style={{ borderColor: COLORS.whiteBucks }}>
+          <div ref={productSectionRef} className="flex justify-between items-end mb-4 px-1 border-b pb-2" style={{ borderColor: COLORS.whiteBucks }}>
             <h2 className="text-xl font-bold flex items-center gap-2 tracking-wide" style={{ color: COLORS.brownWindmill }}>
               <Book size={20} style={{ color: COLORS.chocolateBubble }} />
               {searchQuery || selectedCategory !== 'all' ? '搜尋結果' : '探索發現'}
@@ -741,8 +936,8 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
           {/* 內容區：根據是否有資料決定渲染方式 */}
           {isLoading ? (
             /* 載入中：使用 Grid 顯示骨架屏 */
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
-              {Array.from({ length: 8 }).map((_, index) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-fade-in">
+              {Array.from({ length: 10 }).map((_, index) => (
                 <div key={index} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full">
                   <div className="aspect-square bg-gray-100 animate-pulse" />
                   <div className="p-3 space-y-2 flex-1">
@@ -756,43 +951,85 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
                 </div>
               ))}
             </div>
-          ) : filteredBooks.length > 0 ? (
+          ) : currentProducts.length > 0 ? (
             /* 有資料：使用 Grid 顯示書籍卡片 */
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
-              {filteredBooks.map((book) => (
-                <div key={book.id} onClick={() => onNavigate('product', book)} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all cursor-pointer border flex flex-col h-full group" style={{ borderColor: COLORS.whiteBucks }}>
-                  {/* Image Area - Square Aspect Ratio */}
-                  <div className="relative aspect-square bg-[#F9F7F5] overflow-hidden">
-                    <img src={book.cover || book.imageBase64 || "https://dummyimage.com/400x400/eee/aaa"} alt={book.title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
-                    {/* Badge */}
-                    <div className="absolute top-0 right-0 px-2 py-1 text-white text-[10px] font-bold shadow-sm rounded-bl-lg z-10" style={{ backgroundColor: COLORS.brownWindmill }}>
-                      {book.type === 'give' ? '贈送' : '販售'}
-                    </div>
-                  </div>
-
-                  {/* Content Area */}
-                  <div className="p-3 flex flex-col flex-1">
-                    <h3 className="font-bold text-[#756256] text-sm leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{book.title}</h3>
-
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.subject}</span>
-                      {book.grade && book.grade !== '其他' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.grade}</span>}
-                    </div>
-
-                    <div className="mt-auto flex items-end justify-between border-t pt-2 border-[#E8E3DF]">
-                      <div>
-                        <div className="text-[10px] text-gray-400 mb-0.5">{book.type === 'give' ? '好心人' : '好書'}</div>
-                        <div className="font-bold text-lg text-[#756256] leading-none">NT$ {book.price}</div>
-                      </div>
-                      <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                        <span>@{book.seller?.nickname || '同學'}</span>
-                        <Heart size={10} className="text-red-400 fill-red-400" /> <span className="font-bold text-red-400">12</span>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-fade-in">
+                {currentProducts.map((book) => (
+                  <div key={book.id} onClick={() => onNavigate('product', book)} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all cursor-pointer border flex flex-col h-full group" style={{ borderColor: COLORS.whiteBucks }}>
+                    {/* Image Area - Square Aspect Ratio */}
+                    <div className="relative aspect-square bg-[#F9F7F5] overflow-hidden">
+                      <img src={book.cover || book.imageBase64 || "https://dummyimage.com/400x400/eee/aaa"} alt={book.title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+                      {/* Badge */}
+                      <div className="absolute top-0 right-0 px-3 py-1.5 text-white text-xs font-bold shadow-sm rounded-bl-lg z-10" style={{ backgroundColor: COLORS.brownWindmill }}>
+                        {book.type === 'gift' || book.price === 0 ? '贈送' : '販售'}
                       </div>
                     </div>
+
+                    {/* Content Area */}
+                    <div className="p-3 flex flex-col flex-1">
+                      <h3 className="font-bold text-[#756256] text-xs leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{book.title}</h3>
+
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.subject}</span>
+                        {book.grade && book.grade !== '其他' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.grade}</span>}
+                      </div>
+
+                      <div className="mt-auto flex items-end justify-between border-t pt-2 border-[#E8E3DF]">
+                        <div>
+                          <div className="text-[10px] text-gray-400 mb-1">{book.type === 'gift' || book.price === 0 ? '好心人' : '好書'}</div>
+                          <PriceDisplay type={book.type} price={book.price} />
+                        </div>
+                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <span>@{book.seller?.nickname || '同學'}</span>
+                          <Heart size={10} className="text-red-400 fill-red-400" /> <span className="font-bold text-red-400">12</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalProductPages > 1 && (
+                <div className="mt-8 flex justify-center items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setProductPage(p => Math.max(1, p - 1));
+                      scrollToProductSection();
+                    }}
+                    disabled={productPage === 1}
+                    className="p-2 rounded-lg bg-white border border-gray-200 text-[#756256] disabled:opacity-30 hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-none px-2">
+                    {Array.from({ length: totalProductPages }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setProductPage(i + 1);
+                          scrollToProductSection();
+                        }}
+                        className={`w-10 h-10 rounded-lg font-bold flex-shrink-0 transition-all shadow-sm ${productPage === i + 1 ? 'bg-[#756256] text-white' : 'bg-white text-[#756256] border border-gray-100 hover:bg-gray-50'}`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setProductPage(p => Math.min(totalProductPages, p + 1));
+                      scrollToProductSection();
+                    }}
+                    disabled={productPage === totalProductPages}
+                    className="p-2 rounded-lg bg-white border border-gray-200 text-[#756256] disabled:opacity-30 hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           ) : (
             /* 沒資料：獨立的 Flex 容器，確保絕對置中 */
             <div className="flex flex-col items-center justify-center py-20 w-full animate-fade-in text-center col-span-full">
@@ -812,7 +1049,7 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
 };
 
 // ... ProfilePage similar to new_front.js but hooks up with services ...
-const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId, onPurchase, onEquip }) => {
+const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, currentAvatarId, onPurchase, onEquip }) => {
   const [tab, setTab] = useState('shelf'); // 'upload', 'shelf', 'store'
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
   const [myListings, setMyListings] = useState(INITIAL_MY_LISTINGS);
@@ -843,8 +1080,9 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSellForm({ ...sellForm, coverImagePreview: reader.result });
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result);
+        setSellForm({ ...sellForm, coverImagePreview: compressed });
       };
       reader.readAsDataURL(file);
     }
@@ -862,6 +1100,17 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
     if (sellForm.transactionType === 'sell' && !sellForm.price) {
       alert("請填寫售價！");
       return;
+    }
+    // Validation for Textbook: Grade and Subject are required
+    if (sellForm.bookType === 'textbook') {
+      if (!sellForm.gradeLevel) {
+        alert("請選擇年級！");
+        return;
+      }
+      if (!sellForm.subject) {
+        alert("請選擇科目！");
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -883,7 +1132,6 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
           score: user.creditScore || 5.0
         },
         cover: sellForm.coverImagePreview,
-        imageBase64: sellForm.coverImagePreview,
         timestamp: new Date()
       };
 
@@ -951,7 +1199,7 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
             </div>
           </div>
           <h2 className="mt-4 text-xl font-bold tracking-widest" style={{ color: COLORS.brownWindmill }}>{user.nickname || user.email}</h2>
-          <p className="text-sm text-[#9E9081] mb-2">{user.grade || '未填寫'} {user.class ? `${user.class}班` : ''} · {user.email}</p>
+          <p className="text-sm text-[#9E9081] mb-2">{user.email}</p>
 
           <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full text-xs font-bold text-yellow-700">
             <Coins size={14} fill="currentColor" /> {coins} 書香幣
@@ -1090,7 +1338,27 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
                 <input
                   type="number"
                   value={sellForm.price}
-                  onChange={e => setSellForm({ ...sellForm, price: e.target.value })}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (Number(val) < 0) return; // Prevent negative inputs
+
+                    if (Number(val) === 0 && val !== '') {
+                      setSellForm({ ...sellForm, price: 0, transactionType: 'gift' });
+                    } else {
+                      // If user types a positive number, ensure it switches back to sell if it was gift? 
+                      // The prompt didn't strictly say that, but it implies "sell" context. 
+                      // However, if I switch to 'gift', the input becomes disabled (line 1105).
+                      // So the user can't type anything else once it hits 0.
+                      // But wait, if it auto-switches to gift, the input is disabled, so they can't change it back to non-zero?
+                      // That would be bad UX. They'd have to click "Sell" button to re-enable it.
+                      // Let's check line 1105: disabled={sellForm.transactionType === 'gift'}
+                      // If I change to gift, it disables. The user sees 0 and it's disabled.
+                      // They can click "販售" (Sell) button to enable it again.
+                      // That matches the requirement: "if enter 0, auto select transaction type to 'Gift'".
+                      // It seems acceptable.
+                      setSellForm({ ...sellForm, price: val });
+                    }
+                  }}
                   className="w-full p-3 border rounded-lg bg-gray-50 text-sm"
                   placeholder="100"
                   disabled={sellForm.transactionType === 'gift'}
@@ -1178,15 +1446,15 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
               <div className="text-center py-10 text-gray-400">目前沒有上架的書籍</div>
             ) : (
               myListings.map(item => (
-                <div key={item.id} className="bg-white rounded-xl shadow-sm border p-3 flex gap-4 items-center" style={{ borderColor: COLORS.whiteBucks }}>
+                <div key={item.id} onClick={() => onNavigate('product', item)} className="bg-white rounded-xl shadow-sm border p-3 flex gap-4 items-center cursor-pointer hover:shadow-md transition-shadow" style={{ borderColor: COLORS.whiteBucks }}>
                   <div className="w-16 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
                     <img src={item.cover} className="w-full h-full object-cover" alt={item.title} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-[#756256] truncate">{item.title}</h3>
-                    <div className="text-sm text-[#9E9081] font-medium">NT$ {item.price}</div>
+                    <div className="text-sm text-[#9E9081] font-medium">{item.price === 0 || item.type === 'gift' ? '贈送' : `NT$ ${item.price}`}</div>
                     <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                      <span>{item.views} 次瀏覽</span> · <span>{item.date}</span>
+                      <span>{item.views || 0} 次瀏覽</span> · <span>{item.date}</span>
                     </div>
                   </div>
                   <button onClick={(e) => handleDeleteBook(item.id, e)} className="p-2 text-red-400 hover:bg-red-50 rounded-full">
@@ -1231,10 +1499,14 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
 // ... (previous helper functions)
 
 // --- [New] 聊天室組件 (ChatRoom) ---
-const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
+const ChatRoom = ({ transaction, currentUser, onClose }) => {
+  const { id: transactionId, sellerId, bookTitle, price } = transaction;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [chatImage, setChatImage] = useState(null);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const chatFileInputRef = useRef(null);
 
   useEffect(() => {
     if (!transactionId) return;
@@ -1245,30 +1517,81 @@ const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
     return () => unsubscribe && unsubscribe();
   }, [transactionId]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [newMessage]);
+
+  const handleChatImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result, 800, 800);
+        setChatImage(compressed);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !chatImage) return;
     try {
-      await chatService.sendMessage(transactionId, currentUser.uid, currentUser.name || currentUser.nickname || "同學", newMessage);
+      await chatService.sendMessage(transactionId, currentUser.uid, currentUser.name || currentUser.nickname || "同學", newMessage, chatImage);
       setNewMessage("");
+      setChatImage(null);
     } catch (e) {
       console.error(e);
       alert("發送失敗: " + e.message);
     }
   };
 
+  const handleFillTemplate = () => {
+    const template = `雙方已達成協議！✅
+若有綁定官方LINE系統將會通知您
+----------------
+**時間**：
+**地點**：
+**書籍名稱**：${bookTitle}
+**價格**：NT$ ${price}`;
+    setNewMessage(template);
+  };
+
+  const renderMessageContent = (content, image) => {
+    return (
+      <div className="flex flex-col gap-2">
+        {image && (
+          <div className="rounded-lg overflow-hidden bg-gray-100 mb-1">
+            <img src={image} alt="chat" className="max-w-full h-auto object-contain cursor-pointer" onClick={() => window.open(image, '_blank')} />
+          </div>
+        )}
+        {content && content.split(/(\*\*.*?\*\*)/g).map((part, i) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={part + i}>{part.slice(2, -2)}</strong>;
+          }
+          return <span key={part + i} className="whitespace-pre-wrap">{part}</span>;
+        })}
+      </div>
+    );
+  };
+
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-t-xl rounded-bl-xl shadow-2xl flex flex-col z-50 animate-slide-up border border-stone-200 overflow-hidden">
+    <div className="fixed bottom-4 right-4 w-80 h-[450px] bg-white rounded-t-xl rounded-bl-xl shadow-2xl flex flex-col z-50 animate-slide-up border border-stone-200 overflow-hidden">
       {/* Header */}
       <div className="bg-[#756256] text-white p-3 flex justify-between items-center shadow-md">
         <div className="flex items-center gap-2">
           <MessageCircle size={18} />
-          <span className="font-bold text-sm truncate max-w-[150px]">{title || "聊天室"}</span>
+          <span className="font-bold text-sm truncate max-w-[150px]">{bookTitle || "聊天室"}</span>
         </div>
         <button onClick={onClose} className="hover:bg-white/20 rounded-full p-1 transition-colors"><X size={16} /></button>
       </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#F9F7F5]">
-        {messages.length === 0 && <div className="text-center text-xs text-gray-400 mt-4">與賣家開始聊天吧！</div>}
+        {messages.length === 0 && <div className="text-center text-xs text-gray-400 mt-4">與雙方開始聊天吧！</div>}
         {messages.map(msg => {
           const isMe = msg.senderId === currentUser.uid;
           const formatTime = (ts) => {
@@ -1281,8 +1604,8 @@ const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
           return (
             <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
               {isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
-              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none'}`}>
-                {msg.content}
+              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none'}`}>
+                {renderMessageContent(msg.content, msg.image)}
               </div>
               {!isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
             </div>
@@ -1290,18 +1613,66 @@ const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
         })}
         <div ref={messagesEndRef} />
       </div>
-      {/* Input */}
-      <div className="p-3 bg-white border-t flex gap-2">
+
+      {/* Quick Action Button for Seller */}
+      {currentUser.uid === sellerId && (
+        <div className="px-3 py-1.5 bg-[#F9F7F5] border-t">
+          <button
+            onClick={handleFillTemplate}
+            className="text-[10px] w-full font-bold text-[#756256] border border-[#756256] rounded-md px-2 py-1 transform hover:translate-y-[-1px] transition-all bg-white flex items-center justify-center gap-1 shadow-sm active:translate-y-0"
+          >
+            面交的時間地點已決定好
+          </button>
+        </div>
+      )}
+
+      {/* Image Preview */}
+      {chatImage && (
+        <div className="px-3 py-2 bg-gray-50 border-t flex items-center gap-2">
+          <div className="relative w-12 h-12 rounded-md overflow-hidden border border-gray-200">
+            <img src={chatImage} alt="preview" className="w-full h-full object-cover" />
+            <button onClick={() => setChatImage(null)} className="absolute top-0 right-0 bg-black/50 text-white rounded-full p-0.5"><X size={10} /></button>
+          </div>
+          <span className="text-[10px] text-gray-500">準備傳送圖片...</span>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="p-3 bg-white border-t flex items-end gap-2">
         <input
-          type="text"
-          value={newMessage}
-          onChange={e => setNewMessage(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder="輸入訊息..."
-          className="flex-1 bg-gray-100 rounded-full px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#756256]"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          ref={chatFileInputRef}
+          onChange={handleChatImageUpload}
         />
-        <button onClick={handleSend} className="bg-[#756256] text-white p-2 rounded-full hover:bg-[#5D4E44] transition-colors">
-          <Send size={16} />
+        <button
+          onClick={() => chatFileInputRef.current?.click()}
+          className="p-2 text-gray-400 hover:text-[#756256] transition-colors rounded-full hover:bg-gray-100 flex-shrink-0"
+        >
+          <Camera size={20} />
+        </button>
+
+        <textarea
+          ref={textareaRef}
+          rows="1"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          placeholder="輸入訊息..."
+          className="w-full bg-[#F9F7F5] border-none rounded-2xl px-4 py-2 text-sm focus:ring-1 focus:ring-[#756256] outline-none resize-none transition-all scrollbar-hide py-2"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!newMessage.trim() && !chatImage}
+          className="p-2 bg-[#756256] text-white rounded-full hover:bg-[#5D4E44] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex-shrink-0"
+        >
+          <Send size={18} />
         </button>
       </div>
     </div>
@@ -1360,7 +1731,7 @@ const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
 
           return (
             <div key={chat.id}
-              onClick={bookExists ? () => onSelectChat({ transactionId: chat.id, title: chat.bookTitle }) : (e) => handleDeleteChat(e, chat.id)}
+              onClick={bookExists ? () => onSelectChat(chat) : (e) => handleDeleteChat(e, chat.id)}
               className={`p-3 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-100 ${bookExists ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 grayscale hover:bg-gray-200'}`}
             >
               <div className="font-bold text-[#756256] text-sm truncate">{chat.bookTitle}</div>
@@ -1512,7 +1883,13 @@ const App = () => {
   );
 
   const navigate = (page, data) => {
-    if (page === 'product') setSelectedProduct(data);
+    if (page === 'product') {
+      setSelectedProduct(data);
+      // Increment view count
+      if (data && data.id) {
+        bookService.incrementBookView(data.id);
+      }
+    }
     setCurrentPage(page);
   };
 
@@ -1520,8 +1897,8 @@ const App = () => {
     await authService.logout();
   };
 
-  const handleAddWish = (content) => {
-    setWishes([{ id: Date.now(), content, user: currentUser.nickname || currentUser.email, time: '剛剛', avatarId: currentAvatarId }, ...wishes]);
+  const handleAddWish = (content, image) => {
+    setWishes([{ id: Date.now(), content, image, user: currentUser.nickname || currentUser.email, time: '剛剛', avatarId: currentAvatarId }, ...wishes]);
   };
 
   const handlePurchaseAvatar = async (avatarId, price) => {
@@ -1557,7 +1934,7 @@ const App = () => {
       case 'product': return <ProductDetailPage product={selectedProduct} currentUser={currentUser} onBack={() => navigate('home')} onContact={async () => {
         try {
           await bookService.startTransaction(selectedProduct, currentUser, (transactionId) => {
-            setActiveChat({ transactionId, title: selectedProduct.title });
+            setActiveChat({ id: transactionId, bookId: selectedProduct.id, bookTitle: selectedProduct.title, sellerId: selectedProduct.sellerId, price: selectedProduct.price });
           });
         } catch (error) {
           console.error(error);
@@ -1568,6 +1945,7 @@ const App = () => {
         <ProfilePage
           user={currentUser}
           onBack={() => navigate('home')}
+          onNavigate={navigate}
           onLogout={handleLogout}
           coins={coins}
           myAvatars={myAvatars}
@@ -1586,8 +1964,7 @@ const App = () => {
       {showCheckInModal && <CheckInModal />}
       {activeChat && (
         <ChatRoom
-          transactionId={activeChat.transactionId}
-          title={activeChat.title}
+          transaction={activeChat}
           currentUser={currentUser}
           onClose={() => setActiveChat(null)}
         />

@@ -1,5 +1,6 @@
 import { db } from '../config.js';
 import axios from 'axios';
+import firebase from 'firebase/compat/app';
 
 export const bookService = {
     // 取得書籍列表 (即時監聽)
@@ -26,7 +27,14 @@ export const bookService = {
     async createBook(bookData) {
         return db.collection('books').add({
             ...bookData,
-            status: 'Available'
+            status: 'Available',
+            views: 0 // Initialize views
+        });
+    },
+    // 增加瀏覽次數
+    async incrementBookView(bookId) {
+        return db.collection('books').doc(bookId).update({
+            views: firebase.firestore.FieldValue.increment(1)
         });
     },
     // 下架書籍 (刪除) - 改用 Callable Function 以避免權限問題
