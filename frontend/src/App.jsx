@@ -472,7 +472,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
             )}
           </div>
           <h1 className="text-2xl md:text-3xl font-bold mt-4 mb-2 leading-tight" style={{ color: COLORS.brownWindmill }}>{product.title}</h1>
-          <p className="text-sm text-gray-500 mb-4">{product.author} · {product.publisher}</p>
+
 
           <div className="flex items-end gap-3 mb-6 pb-6 border-b" style={{ borderColor: COLORS.whiteBucks }}>
             <PriceDisplay type={product.type} price={product.price} originalPrice={product.originalPrice} large />
@@ -482,7 +482,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
             <div>
               <h3 className="text-sm font-bold text-[#9E9081] mb-2">商品狀況</h3>
               <p className="text-gray-700 bg-gray-50 p-3 rounded-lg inline-block border border-gray-100">{product.conditionLevel}</p>
-              <p className="text-gray-700 mt-2">{product.location ? product.location : '面交'}</p>
+
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家描述</h3>
@@ -1166,11 +1166,20 @@ const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
         {messages.length === 0 && <div className="text-center text-xs text-gray-400 mt-4">與賣家開始聊天吧！</div>}
         {messages.map(msg => {
           const isMe = msg.senderId === currentUser.uid;
+          const formatTime = (ts) => {
+            if (!ts) return '';
+            const date = ts.toDate ? ts.toDate() : new Date(ts);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          };
+          const timeStr = formatTime(msg.timestamp);
+
           return (
-            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border'}`}>
+            <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+              {isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
+              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border'}`}>
                 {msg.content}
               </div>
+              {!isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
             </div>
           );
         })}
