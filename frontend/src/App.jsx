@@ -1093,10 +1093,131 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
 
 // ... (previous helper functions)
 
+// --- [New] 聊天室組件 (ChatRoom) ---
+const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (!transactionId) return;
+    const unsubscribe = chatService.subscribeToMessages(transactionId, (data) => {
+      setMessages(data);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    });
+    return () => unsubscribe && unsubscribe();
+  }, [transactionId]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+    try {
+      await chatService.sendMessage(transactionId, currentUser.uid, currentUser.name || currentUser.nickname || "同學", newMessage);
+      setNewMessage("");
+    } catch (e) {
+      console.error(e);
+      alert("發送失敗: " + e.message);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-t-xl rounded-bl-xl shadow-2xl flex flex-col z-50 animate-slide-up border border-stone-200 overflow-hidden">
+      {/* Header */}
+      <div className="bg-[#756256] text-white p-3 flex justify-between items-center shadow-md">
+        <div className="flex items-center gap-2">
+          <MessageCircle size={18} />
+          <span className="font-bold text-sm truncate max-w-[150px]">{title || "聊天室"}</span>
+        </div>
+        <button onClick={onClose} className="hover:bg-white/20 rounded-full p-1 transition-colors"><X size={16} /></button>
+      </div>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#F9F7F5]">
+        {messages.length === 0 && <div className="text-center text-xs text-gray-400 mt-4">與賣家開始聊天吧！</div>}
+        {messages.map(msg => {
+          const isMe = msg.senderId === currentUser.uid;
+          return (
+            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border'}`}>
+                {msg.content}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+      {/* Input */}
+      <div className="p-3 bg-white border-t flex gap-2">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={e => setNewMessage(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          placeholder="輸入訊息..."
+          className="flex-1 bg-gray-100 rounded-full px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#756256]"
+        />
+        <button onClick={handleSend} className="bg-[#756256] text-white p-2 rounded-full hover:bg-[#5D4E44] transition-colors">
+          <Send size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- ChatList Component (New) ---
+const ChatList = ({ currentUser, onSelectChat, onClose }) => {
+  const [chats, setChats] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const chatsMap = new Map();
+    const updateChats = (snapshot) => {
+      snapshot.forEach(doc => {
+        chatsMap.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+      setChats(Array.from(chatsMap.values()).sort((a, b) => {
+        const tA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+        const tB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+        return tB - tA;
+      }));
+    };
+
+    const unsubBuyer = bookService.getUserTransactions(currentUser.uid, updateChats);
+    const unsubSeller = bookService.getSellerTransactions(currentUser.uid, updateChats);
+    return () => {
+      unsubBuyer();
+      unsubSeller();
+    };
+  }, [currentUser]);
+
+  return (
+    <div className="fixed bottom-24 right-4 w-80 max-h-96 bg-white rounded-xl shadow-2xl flex flex-col z-50 animate-slide-up border border-stone-200 overflow-hidden">
+      <div className="bg-[#756256] text-white p-3 flex justify-between items-center">
+        <span className="font-bold">我的訊息</span>
+        <button onClick={onClose} className="hover:bg-white/20 rounded-full p-1"><X size={16} /></button>
+      </div>
+      <div className="overflow-y-auto p-2 space-y-2 bg-[#F9F7F5] flex-1">
+        {chats.length === 0 && <div className="text-center text-gray-400 py-4 text-sm">尚無聊天記錄</div>}
+        {chats.map(chat => (
+          <div key={chat.id} onClick={() => onSelectChat({ transactionId: chat.id, title: chat.bookTitle })}
+            className="p-3 bg-white hover:bg-gray-50 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-100">
+            <div className="font-bold text-[#756256] text-sm truncate">{chat.bookTitle}</div>
+            <div className="text-xs text-gray-500 flex justify-between mt-1">
+              <span>{chat.buyerId === currentUser.uid ? '向賣家提問' : '來自買家'}</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] ${chat.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                {chat.status === 'Pending' ? '進行中' : chat.status}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 const App = () => {
   const [currentPage, setCurrentPage] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [activeChat, setActiveChat] = useState(null); // { transactionId, title }
+  const [showChatList, setShowChatList] = useState(false);
 
   // Books
   const [books, setBooks] = useState([]);
@@ -1262,9 +1383,15 @@ const App = () => {
     switch (currentPage) {
       case 'login': return <LoginPage />;
       case 'home': return <HomePage onNavigate={navigate} user={currentUser} coins={coins} wishes={wishes} onAddWish={handleAddWish} books={books} isLoading={isLoading} currentAvatarId={currentAvatarId} unreadCount={0} examCountdown={examCountdown} />;
-      case 'product': return <ProductDetailPage product={selectedProduct} onBack={() => navigate('home')} onContact={async () => {
-        await bookService.reserveBook(selectedProduct.id, currentUser.uid, selectedProduct.price, new Date().toISOString());
-        alert("已發送預訂請求！");
+      case 'product': return <ProductDetailPage product={selectedProduct} currentUser={currentUser} onBack={() => navigate('home')} onContact={async () => {
+        try {
+          await bookService.startTransaction(selectedProduct, currentUser, (transactionId) => {
+            setActiveChat({ transactionId, title: selectedProduct.title });
+          });
+        } catch (error) {
+          console.error(error);
+          alert("無法開啟對話");
+        }
       }} />;
       case 'profile': return (
         <ProfilePage
@@ -1286,6 +1413,36 @@ const App = () => {
     <>
       {renderPage()}
       {showCheckInModal && <CheckInModal />}
+      {activeChat && (
+        <ChatRoom
+          transactionId={activeChat.transactionId}
+          title={activeChat.title}
+          currentUser={currentUser}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
+
+      {/* Persistent Chat Button */}
+      {currentUser && currentPage !== 'login' && !activeChat && (
+        <>
+          <button
+            onClick={() => setShowChatList(!showChatList)}
+            className="fixed bottom-6 right-6 w-14 h-14 bg-[#756256] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#5D4E44] transition-all transform hover:scale-105 z-40 border-2 border-white"
+          >
+            {showChatList ? <X size={24} /> : <MessageCircle size={24} />}
+          </button>
+          {showChatList && (
+            <ChatList
+              currentUser={currentUser}
+              onSelectChat={(chat) => {
+                setActiveChat(chat);
+                setShowChatList(false);
+              }}
+              onClose={() => setShowChatList(false)}
+            />
+          )}
+        </>
+      )}
     </>
   );
 };
