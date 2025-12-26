@@ -3,7 +3,7 @@ import firebase from 'firebase/compat/app';
 
 export const chatService = {
     // Send a message
-    async sendMessage(transactionId, senderId, senderName, content, image = null) {
+    async sendMessage(transactionId, senderId, senderName, content, image = null, invoiceData = null) {
         if (!content?.trim() && !image) return;
 
         try {
@@ -25,12 +25,21 @@ export const chatService = {
                     timestamp: new Date()
                 });
 
-                // Update transaction with unread status and preview
-                await transactionRef.update({
+                // Update transaction with unread status, preview, and invoice data if any
+                const updates = {
                     lastMessage: content?.trim() || (image ? "[圖片]" : ""),
                     lastTimestamp: new Date(),
                     unreadBy: firebase.firestore.FieldValue.arrayUnion(recipientId)
-                });
+                };
+
+                if (invoiceData) {
+                    updates.meetingTime = invoiceData.meetingTime || "";
+                    updates.meetingLocation = invoiceData.meetingLocation || "";
+                    updates.invoiceSentAt = invoiceData.invoiceSentAt || new Date();
+                    updates.status = 'Invoiced';
+                }
+
+                await transactionRef.update(updates);
             }
         } catch (error) {
             console.error("Error sending message:", error);

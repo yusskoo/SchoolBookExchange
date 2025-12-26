@@ -81,6 +81,14 @@ export const bookService = {
                     status: 'Pending',
                     timestamp: new Date()
                 });
+
+                // Add notification for seller
+                await this.addNotification({
+                    userId: book.sellerId,
+                    content: `你上架的《${book.title}》有人詢問喔~`,
+                    type: 'inquiry'
+                });
+
                 onTransactionCreated(docRef.id);
             }
         } catch (e) {
@@ -164,6 +172,34 @@ export const bookService = {
     async markAsRead(transactionId, userId) {
         return db.collection('transactions').doc(transactionId).update({
             unreadBy: firebase.firestore.FieldValue.arrayRemove(userId)
+        });
+    },
+    // --- 通知系統 (Notifications) ---
+    // 訂閱通知
+    subscribeToNotifications(userId, callback) {
+        return db.collection('notifications')
+            .where('userId', '==', userId)
+            .orderBy('timestamp', 'desc')
+            .limit(20)
+            .onSnapshot(snapshot => {
+                const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                callback(notifications);
+            });
+    },
+    // 標記通知為已讀
+    async markNotificationAsRead(notificationId) {
+        return db.collection('notifications').doc(notificationId).update({
+            isRead: true
+        });
+    },
+    // 新增通知 (內部調用)
+    async addNotification({ userId, content, type = 'system' }) {
+        return db.collection('notifications').add({
+            userId,
+            content,
+            type,
+            isRead: false,
+            timestamp: new Date()
         });
     },
     // Helper to record checkin

@@ -143,6 +143,32 @@ const INITIAL_NOTIFICATIONS = [
 
 
 // --- Helper Functions ---
+const getRelativeTime = (timestamp) => {
+  if (!timestamp) return "";
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  if (diffInSeconds < 60) return "剛剛";
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}分鐘前`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}小時前`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}天前`;
+
+  return date.toLocaleDateString();
+};
+
+const normalizeTime = (timeStr) => {
+  if (!timeStr) return "";
+  // Match format like "1/5 7:20" or "01/05 07:20" or "1/5 07:20" etc.
+  const regex = /(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})/;
+  const match = timeStr.match(regex);
+  if (match) {
+    const [_, month, day, hour, minute] = match;
+    return `${month.padStart(2, '0')}/${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+  }
+  return timeStr;
+};
+
 const PriceDisplay = ({ type, price, originalPrice, large = false }) => {
   if (type === 'exchange') return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.brushwood }}><Repeat size={large ? 20 : 14} /><span>想交換</span></div>;
   if (type === 'gift' || price === 0) return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.chocolateBubble }}><Gift size={large ? 20 : 14} /><span>贈送</span></div>;
@@ -184,26 +210,7 @@ const compressImage = (base64Str, maxWidth = 800, maxHeight = 800, quality = 0.6
   });
 };
 
-const getRelativeTime = (timestamp) => {
-  if (!timestamp) return '剛剛';
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "現在";
-  if (diffMins < 5) return "3分鐘前";
-  if (diffMins < 15) return "10分鐘前";
-  if (diffMins < 30) return "30分鐘前";
-  if (diffMins < 60) return "1小時前";
-  if (diffHours < 48) return "昨天";
-  if (diffDays < 7) return "這週";
-  if (diffDays < 15) return "上週";
-  if (diffDays < 30) return "上個月";
-  return "一個月前";
-};
+// (Moved getRelativeTime to top)
 
 // --- [組件] 自動輪播精選區 ---
 const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
@@ -825,7 +832,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   );
 };
 
-const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown }) => {
+const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown, onToggleNotifications, hasUnreadNotifications }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
@@ -901,7 +908,7 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
             <div className="flex items-center gap-2"><div className="w-8 h-8 backdrop-blur rounded-sm flex items-center justify-center font-bold font-serif" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>校</div><span className="text-xl font-bold tracking-widest">循環平台</span></div>
             <div className="flex items-center gap-3">
               <button onClick={handleResetHome} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Home size={20} /></button>
-              <button onClick={() => onNavigate('notifications')} className="relative p-2 hover:bg-white/10 rounded-full transition-colors"><Bell size={20} />{unreadCount > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>
+              <button onClick={onToggleNotifications} className="relative p-2 hover:bg-white/10 rounded-full transition-colors"><Bell size={20} />{hasUnreadNotifications && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />}</button>
               <button onClick={() => onNavigate('profile')} className="flex items-center gap-2 hover:bg-white/20 pl-1 pr-3 py-1 rounded-full transition-all border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-white/20"><img src={currentAvatar.src} alt="avatar" className="w-full h-full object-cover" /></div><span className="hidden sm:inline text-sm font-medium tracking-wide">{user.nickname || user.email}</span></button>
             </div>
           </div>
@@ -980,14 +987,17 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
                     <div className="relative aspect-square bg-[#F9F7F5] overflow-hidden">
                       <img src={book.cover || book.imageBase64 || "https://dummyimage.com/400x400/eee/aaa"} alt={book.title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                       {/* Badge */}
-                      <div className="absolute top-0 right-0 px-3 py-1.5 text-white text-xs font-bold shadow-sm rounded-bl-lg z-10" style={{ backgroundColor: COLORS.brownWindmill }}>
+                      <div
+                        className="absolute top-0 right-0 px-3 py-1.5 text-white text-xs font-bold shadow-sm rounded-bl-lg z-10"
+                        style={{ backgroundColor: (book.type === 'gift' || book.price === 0) ? COLORS.chocolateBubble : COLORS.brownWindmill }}
+                      >
                         {book.type === 'gift' || book.price === 0 ? '贈送' : '販售'}
                       </div>
                     </div>
 
                     {/* Content Area */}
                     <div className="p-3 flex flex-col flex-1">
-                      <h3 className="font-bold text-[#756256] text-xs leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{book.title}</h3>
+                      <h3 className="font-bold text-[#756256] text-base leading-tight mb-2 line-clamp-2 min-h-[2.5em]">{book.title}</h3>
 
                       <div className="flex flex-wrap gap-1 mb-3">
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F9F7F5] text-[#9E9081]">{book.subject}</span>
@@ -1564,7 +1574,22 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
   const handleSend = async () => {
     if (!newMessage.trim() && !chatImage) return;
     try {
-      await chatService.sendMessage(transactionId, currentUser.uid, currentUser.name || currentUser.nickname || "同學", newMessage, chatImage);
+      // Check for invoice template
+      let invoiceData = null;
+      if (newMessage.includes("雙方已達成協議！✅")) {
+        // More robust parsing for Time and Location
+        const timeMatch = newMessage.match(/\*\*時間\*\*：\s*(.*)/);
+        const locationMatch = newMessage.match(/\*\*地點\*\*：\s*(.*)/);
+        if (timeMatch || locationMatch) {
+          invoiceData = {
+            meetingTime: normalizeTime(timeMatch?.[1]?.trim()),
+            meetingLocation: locationMatch?.[1]?.trim(),
+            invoiceSentAt: new Date()
+          };
+        }
+      }
+
+      await chatService.sendMessage(transactionId, currentUser.uid, currentUser.name || currentUser.nickname || "同學", newMessage, chatImage, invoiceData);
       setNewMessage("");
       setChatImage(null);
     } catch (e) {
@@ -1575,12 +1600,12 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
 
   const handleFillTemplate = () => {
     const template = `雙方已達成協議！✅
-      若有綁定官方LINE系統將會通知您
-      ----------------
-      **時間**：
-      **地點**：
-      **書籍名稱**：${bookTitle}
-      **價格**：NT$ ${price}`;
+若有綁定官方LINE系統將會通知您
+----------------
+**時間(ex.1/5 8:20)**：
+**地點**：
+**書籍名稱**：${bookTitle}
+**價格**：NT$ ${price}`;
     setNewMessage(template);
   };
 
@@ -1643,17 +1668,32 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Action Button for Seller */}
-      {currentUser.uid === sellerId && (
-        <div className="px-3 py-1.5 bg-[#F9F7F5] flex justify-start">
+      {/* Actions Toolbar */}
+      <div className="px-3 py-1.5 bg-[#F9F7F5] flex items-center justify-start gap-2 border-t border-stone-100">
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          ref={chatFileInputRef}
+          onChange={handleChatImageUpload}
+        />
+        <button
+          onClick={() => chatFileInputRef.current?.click()}
+          className="p-1.5 text-gray-400 hover:text-[#756256] transition-colors rounded-lg hover:bg-white flex-shrink-0 border border-stone-200 bg-white shadow-sm"
+          title="傳送圖片"
+        >
+          <Camera size={18} />
+        </button>
+
+        {currentUser.uid === sellerId && (
           <button
             onClick={handleFillTemplate}
             className="text-[10px] w-fit font-bold text-[#756256] border border-[#756256] rounded-md px-3 py-1 transform hover:translate-y-[-1px] transition-all bg-white flex items-center gap-1 shadow-sm active:translate-y-0"
           >
-            開立明細
+            🤝開立明細
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Image Preview */}
       {chatImage && (
@@ -1665,23 +1705,8 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
           <span className="text-[10px] text-gray-500">準備傳送圖片...</span>
         </div>
       )}
-
       {/* Input Area */}
       <div className="p-3 bg-white border-t flex items-end gap-2">
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          ref={chatFileInputRef}
-          onChange={handleChatImageUpload}
-        />
-        <button
-          onClick={() => chatFileInputRef.current?.click()}
-          className="p-2 text-gray-400 hover:text-[#756256] transition-colors rounded-full hover:bg-gray-100 flex-shrink-0"
-        >
-          <Camera size={20} />
-        </button>
-
         <textarea
           ref={textareaRef}
           rows="1"
@@ -1755,9 +1780,7 @@ const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
       <div className="overflow-y-auto p-2 space-y-2 bg-[#F9F7F5] flex-1">
         {chats.length === 0 && <div className="text-center text-gray-400 py-4 text-sm">尚無聊天記錄</div>}
         {chats.map(chat => {
-          // Check if book still exists
           const bookExists = books.some(b => b.id === chat.bookId);
-
           return (
             <div key={chat.id}
               onClick={bookExists ? () => onSelectChat(chat) : (e) => handleDeleteChat(e, chat.id)}
@@ -1786,12 +1809,61 @@ const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
     </div>
   );
 };
+
+// --- [New] NotificationCenter Component ---
+const NotificationCenter = ({ notifications, onClose, onMarkAsRead }) => {
+  return (
+    <div className="fixed top-16 right-4 sm:right-20 w-80 max-h-[400px] bg-white rounded-2xl shadow-2xl flex flex-col z-[60] animate-slide-up border border-stone-100 overflow-hidden">
+      <div className="bg-white p-4 border-b flex justify-between items-center">
+        <h3 className="font-bold text-[#756256] flex items-center gap-2">
+          <Bell size={18} className="text-[#A58976]" />
+          我的通知
+        </h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="overflow-y-auto flex-1 bg-[#F9F7F5] p-2 space-y-2">
+        {notifications.length === 0 ? (
+          <div className="py-12 text-center text-gray-400 text-sm flex flex-col items-center gap-2">
+            <Bell size={32} className="opacity-20" />
+            尚無通知訊息
+          </div>
+        ) : (
+          notifications.map(notif => (
+            <div
+              key={notif.id}
+              onClick={() => !notif.isRead && onMarkAsRead(notif.id)}
+              className={`p-3 rounded-xl transition-all cursor-pointer border relative ${notif.isRead ? 'bg-white/50 border-transparent grayscale-[0.3]' : 'bg-white border-blue-50 shadow-sm font-medium'}`}
+            >
+              {!notif.isRead && <div className="absolute top-3 left-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+              <div className="text-xs text-[#756256] mb-1 leading-relaxed pl-2">{notif.content}</div>
+              <div className="text-[10px] text-gray-400 pl-2">
+                {getRelativeTime(notif.timestamp)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {notifications.length > 0 && (
+        <div className="p-3 bg-white border-t text-center">
+          <button className="text-[10px] font-bold text-[#A58976] hover:underline">清除所有已讀</button>
+        </div>
+      )}
+    </div>
+  );
+};
 const App = () => {
   const [currentPage, setCurrentPage] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeChat, setActiveChat] = useState(null); // {transactionId, title}
   const [showChatList, setShowChatList] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const hasUnreadNotifications = notifications.some(n => !n.isRead);
   const [userTransactions, setUserTransactions] = useState([]);
   const hasUnreadMessages = userTransactions.some(t => t.unreadBy?.includes(currentUser?.uid));
 
@@ -1858,6 +1930,7 @@ const App = () => {
     let unsubProfile = null;
     let unsubBooks = null;
     let unsubWishes = null;
+    let unsubNotifications = null;
 
     const unsubscribe = authService.onAuthStateChanged((user) => {
       if (user) {
@@ -1897,7 +1970,7 @@ const App = () => {
           setIsLoading(false);
         }, (error) => {
           console.error("Global books fetch failed:", error);
-          setIsLoading(false); // Stop loading even on error
+          setIsLoading(false);
         });
 
         // Fetch Wishes (Global)
@@ -1905,12 +1978,19 @@ const App = () => {
           setWishes(data);
         });
 
+        // Listen to Notifications
+        unsubNotifications = bookService.subscribeToNotifications(user.uid, (data) => {
+          setNotifications(data);
+        });
+
       } else {
         setCurrentUser(null);
         setCurrentPage('login');
+        setNotifications([]);
         if (unsubProfile) unsubProfile();
         if (unsubBooks) unsubBooks();
         if (unsubWishes) unsubWishes();
+        if (unsubNotifications) unsubNotifications();
       }
     });
 
@@ -1920,6 +2000,7 @@ const App = () => {
       if (unsubProfile) unsubProfile();
       if (unsubBooks) unsubBooks();
       if (unsubWishes) unsubWishes();
+      if (unsubNotifications) unsubNotifications();
     };
   }, []);
 
@@ -2012,7 +2093,21 @@ const App = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'login': return <LoginPage />;
-      case 'home': return <HomePage onNavigate={navigate} user={currentUser} coins={coins} wishes={wishes} onAddWish={handleAddWish} onDeleteWish={handleDeleteWish} books={books} isLoading={isLoading} currentAvatarId={currentAvatarId} unreadCount={0} examCountdown={examCountdown} />;
+      case 'home': return <HomePage
+        onNavigate={navigate}
+        user={currentUser}
+        coins={coins}
+        wishes={wishes}
+        onAddWish={handleAddWish}
+        onDeleteWish={handleDeleteWish}
+        books={books}
+        isLoading={isLoading}
+        currentAvatarId={currentAvatarId}
+        unreadCount={0}
+        examCountdown={examCountdown}
+        onToggleNotifications={() => setShowNotifications(!showNotifications)}
+        hasUnreadNotifications={hasUnreadNotifications}
+      />;
       case 'product': return <ProductDetailPage product={selectedProduct} currentUser={currentUser} onBack={() => navigate('home')} onContact={async () => {
         try {
           await bookService.startTransaction(selectedProduct, currentUser, (transactionId) => {
@@ -2049,6 +2144,16 @@ const App = () => {
           transaction={activeChat}
           currentUser={currentUser}
           onClose={() => setActiveChat(null)}
+        />
+      )}
+
+      {showNotifications && (
+        <NotificationCenter
+          notifications={notifications}
+          onClose={() => setShowNotifications(false)}
+          onMarkAsRead={async (id) => {
+            await bookService.markNotificationAsRead(id);
+          }}
         />
       )}
 
