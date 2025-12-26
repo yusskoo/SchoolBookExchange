@@ -157,9 +157,10 @@ const SkeletonCard = () => (
 );
 
 // --- [組件] 自動輪播精選區 ---
-const FeaturedCarousel = ({ items, onNavigate }) => {
+const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const featuredItems = (items || []).slice(0, 5); // Use first 5 real items
+  const [tickerMessages, setTickerMessages] = useState([]);
 
   useEffect(() => {
     if (featuredItems.length === 0) return;
@@ -169,17 +170,82 @@ const FeaturedCarousel = ({ items, onNavigate }) => {
     return () => clearInterval(interval);
   }, [featuredItems.length]);
 
+  // Determine ticker messages
+  useEffect(() => {
+    const msgs = [];
+    if (currentUser) {
+      msgs.push("歡迎來到校園二手書循環平台，讓書本延續它的旅程！");
+    }
+
+    const getRelativeTime = (timestamp) => {
+      if (!timestamp) return '剛剛';
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return "現在";
+      if (diffMins < 5) return "3分鐘前";
+      if (diffMins < 20) return "10分鐘前";
+      if (diffMins < 50) return "30分鐘前";
+      if (diffHours < 24) return "1小時前";
+      if (diffDays < 2) return "昨天";
+      if (diffDays < 7) return "本週"; // "上週" usually means last week, but if it's within 7 days maybe "本週" or just use "上週" as requested for anything > 1 day?
+      // User requested: "上週", "一個月前". I'll map roughly.
+      if (diffDays < 30) return "上週";
+      return "一個月前";
+    };
+
+    // Use actual items to generate messages, sort by newest first
+    const sortedItems = [...(items || [])].sort((a, b) => {
+      const tA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+      const tB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+      return tB - tA;
+    }).slice(0, 8); // Take latest 8
+
+    sortedItems.forEach(item => {
+      const timeStr = getRelativeTime(item.timestamp);
+      // Use seller nickname, fallback to "匿名" if missing (though should be there)
+      const sellerName = item.seller?.nickname || "匿名";
+      msgs.push(`${timeStr} ${sellerName} 上架了《${item.title}》`);
+    });
+
+    setTickerMessages(msgs);
+  }, [items, currentUser]);
+
+
   if (featuredItems.length === 0) return null;
   const currentItem = featuredItems[activeIndex];
 
   return (
     <div className="h-full">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="bg-orange-500 text-white p-1 rounded-full animate-pulse"><Flame size={16} fill="currentColor" /></span>
-        <h2 className="text-lg font-bold tracking-wide flex items-center gap-2" style={{ color: COLORS.brownWindmill }}>
-          本日精選
-          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">自動更新中</span>
-        </h2>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 w-full">
+          <span className="bg-orange-500 text-white p-1 rounded-full animate-pulse flex-shrink-0"><Flame size={16} fill="currentColor" /></span>
+          <h2 className="text-lg font-bold tracking-wide flex-shrink-0" style={{ color: COLORS.brownWindmill }}>本日精選</h2>
+
+          {tickerMessages.length > 0 && (
+            <div className="flex items-center gap-1 text-xs text-gray-500 ml-2 overflow-hidden flex-1 max-w-[500px]">
+              <Zap size={14} className="text-red-500 flex-shrink-0" fill="currentColor" />
+              <div className="flex-1 overflow-hidden relative h-5">
+                <div className="whitespace-nowrap absolute animate-marquee font-medium flex items-center h-full">
+                  {tickerMessages.map((msg, idx) => (
+                    <span key={idx} className="mr-12 inline-block">{msg}</span>
+                  ))}
+                  {/* Duplicate for smooth loop if needed, but CSS marquee handles it by translation.
+                         Usually to have seamless loop you need to duplicate content. 
+                         For now basic marquee is fine, but double content makes it look continuous. */}
+                  {tickerMessages.map((msg, idx) => (
+                    <span key={`dup-${idx}`} className="mr-12 inline-block">{msg}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
 
       <div className="relative w-full h-48 bg-white rounded-2xl shadow-md overflow-hidden border cursor-pointer group"
@@ -252,6 +318,13 @@ const FeaturedCarousel = ({ items, onNavigate }) => {
         }
         .animate-fade-in-right {
           animation: fade-in-right 0.5s ease-out forwards;
+        }
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); } 
+        }
+        .animate-marquee {
+          animation: marquee 30s linear infinite;
         }
       `}</style>
     </div>
@@ -365,7 +438,7 @@ const LoginPage = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [realName, setRealName] = useState('');
   const [studentId, setStudentId] = useState('');
-  const [nickname, setNickname] = useState('');
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -377,8 +450,8 @@ const LoginPage = ({ onLogin }) => {
         setIsLoading(false);
         return;
       }
-      if (!realName || !studentId || !nickname) {
-        alert("請填寫所有欄位（姓名、學號、暱稱）");
+      if (!realName || !studentId) {
+        alert("請填寫所有欄位（姓名、學號）");
         setIsLoading(false);
         return;
       }
@@ -388,7 +461,9 @@ const LoginPage = ({ onLogin }) => {
       if (isRegistering) {
         await authService.signUp(email, password);
         try {
-          await authService.completeProfile({ realName, studentId, nickname });
+          // Auto-generate nickname: First char of Real Name + "同學"
+          const generatedNickname = (realName.trim()[0] || "") + "同學";
+          await authService.completeProfile({ realName, studentId, nickname: generatedNickname });
           alert("註冊成功！");
         } catch (profileError) {
           console.error("Profile completion failed", profileError);
@@ -417,13 +492,12 @@ const LoginPage = ({ onLogin }) => {
         <form onSubmit={handleSubmit} className="space-y-3 mb-4">
           {isRegistering && (
             <>
-              <input type="text" value={realName} onChange={e => setRealName(e.target.value)} placeholder="真實姓名 (不公開)" className="w-full p-3 border rounded-xl bg-gray-50" required />
+              <input type="text" value={realName} onChange={e => setRealName(e.target.value)} placeholder="真實姓名 (此網站只會顯示姓氏+同學)" className="w-full p-3 border rounded-xl bg-gray-50" required />
               <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="學號" className="w-full p-3 border rounded-xl bg-gray-50" required />
-              <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="顯示暱稱" className="w-full p-3 border rounded-xl bg-gray-50" required />
             </>
           )}
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (@shsh.tw)" className="w-full p-3 border rounded-xl" required />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full p-3 border rounded-xl" required />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (至少6位)" className="w-full p-3 border rounded-xl" required />
 
           <button type="submit" disabled={isLoading} className="w-full py-3 rounded-xl border-2 font-bold mb-3 hover:bg-gray-50 flex items-center justify-center gap-2" style={{ borderColor: COLORS.whiteBucks, color: COLORS.brownWindmill }}>
             {isLoading ? '處理中...' : (isRegistering ? '註冊' : '登入')}
@@ -442,6 +516,26 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   if (!product) return null;
   const isOwner = (currentUser?.uid && product.sellerId && String(currentUser.uid) === String(product.sellerId)) ||
     (currentUser?.studentId && product.seller?.studentId && currentUser.studentId === product.seller.studentId);
+
+  const [sellerProfile, setSellerProfile] = useState(null);
+
+  useEffect(() => {
+    if (product?.sellerId) {
+      // Fetch latest seller profile for accurate studentId
+      const fetchSeller = async () => {
+        try {
+          const { db } = await import('./config'); // Dynamic import to avoid circular dep issues if any
+          const doc = await db.collection('users').doc(product.sellerId).get();
+          if (doc.exists) {
+            setSellerProfile(doc.data());
+          }
+        } catch (e) {
+          console.error("Failed to fetch seller profile", e);
+        }
+      };
+      fetchSeller();
+    }
+  }, [product?.sellerId]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -480,7 +574,21 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
 
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-bold text-[#9E9081] mb-2">商品狀況</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-[#9E9081]">商品狀況</h3>
+                <div className="text-xs text-gray-400">
+                  上架時間：{(() => {
+                    const date = product.timestamp?.toDate ? product.timestamp.toDate() : new Date(product.timestamp || 0);
+                    // Format: yyyy-MM-DD HH:mm
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hour = String(date.getHours()).padStart(2, '0');
+                    const min = String(date.getMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hour}:${min}`;
+                  })()}
+                </div>
+              </div>
               <p className="text-gray-700 bg-gray-50 p-3 rounded-lg inline-block border border-gray-100">{product.conditionLevel}</p>
 
             </div>
@@ -496,8 +604,8 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
                 </div>
                 <div>
                   <div className="font-bold text-[#756256] text-lg">
-                    {product.seller?.nickname || product.seller?.name || "未知賣家"}
-                    <span className="text-sm text-gray-500 font-normal ml-2">@{product.seller?.studentId || "未知學號"}</span>
+                    {sellerProfile?.nickname || product.seller?.nickname || product.seller?.name}
+                    <span className="text-sm text-gray-500 font-normal ml-2">@{sellerProfile?.studentId || product.seller?.studentId}</span>
                   </div>
                   <div className="text-xs text-gray-500 flex items-center gap-1">
                     <Star size={12} fill="#fbbf24" className="text-yellow-400" />
@@ -609,17 +717,14 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
           <>
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="flex-1 min-w-0">
-                <FeaturedCarousel items={books} onNavigate={onNavigate} />
+                <FeaturedCarousel items={books} onNavigate={onNavigate} currentUser={user} />
               </div>
               <div className="w-full md:w-[320px] flex-shrink-0">
                 <ExamWidget examCountdown={examCountdown} />
               </div>
             </div>
 
-            {/* Ticker below */}
-            <div className="mb-8">
-              <TickerWidget />
-            </div>
+            {/* <div className="mb-8"><TickerWidget /></div> Removed as moved to header */}
 
             <WishingWell wishes={wishes} onAddWish={onAddWish} currentUser={user} currentAvatar={currentAvatar} />
           </>
@@ -1176,7 +1281,7 @@ const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
           return (
             <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
               {isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
-              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border'}`}>
+              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none'}`}>
                 {msg.content}
               </div>
               {!isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
