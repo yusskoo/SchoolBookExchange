@@ -134,15 +134,19 @@ export const bookService = {
         });
     },
     // 新增願望
-    async addWish({ content, user, avatarId }) {
-        // App.jsx calls: addWish({ content, user: currentUser.nickname, avatarId: currentAvatarId })
+    async addWish({ content, user, avatarId, image }) {
         return db.collection('wishes').add({
-            uid: 'anonymous', // or from user context if passed
+            uid: firebase.auth().currentUser?.uid || 'anonymous',
             user: user || '同學',
             avatarId: avatarId || 'default',
             content,
+            image: image || null,
             timestamp: new Date()
         });
+    },
+    // 刪除願望
+    async deleteWish(wishId) {
+        return db.collection('wishes').doc(wishId).delete();
     },
     // Helper to add book (from App.jsx usage: addBook(data))
     async addBook(bookData) {
@@ -155,6 +159,12 @@ export const bookService = {
     // 新增: 刪除交易 (用於清理下架書籍的聊天室)
     async deleteTransaction(transactionId) {
         return db.collection('transactions').doc(transactionId).delete();
+    },
+    // 標記訊息為已讀
+    async markAsRead(transactionId, userId) {
+        return db.collection('transactions').doc(transactionId).update({
+            unreadBy: firebase.firestore.FieldValue.arrayRemove(userId)
+        });
     },
     // Helper to record checkin
     recordCheckIn() {

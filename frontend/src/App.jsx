@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Heart, MessageCircle, Share2, Star, AlertCircle, ShoppingCart,
-  User, CheckCircle, MapPin, ThumbsUp, Send, Search, Bell,
+  User, CheckCircle, MapPin, ThumbsUp, Send, Search, Bell, Eye,
   BookOpen, Filter, ArrowRight, Menu, Home, Lock, Mail, ChevronDown, Camera,
   Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight, ExternalLink
 } from 'lucide-react';
@@ -156,7 +156,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-const compressImage = (base64Str, maxWidth = 800, maxHeight = 800) => {
+const compressImage = (base64Str, maxWidth = 800, maxHeight = 800, quality = 0.6) => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -179,9 +179,30 @@ const compressImage = (base64Str, maxWidth = 800, maxHeight = 800) => {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress to 60% quality JPEG
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
   });
+};
+
+const getRelativeTime = (timestamp) => {
+  if (!timestamp) return '剛剛';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "現在";
+  if (diffMins < 5) return "3分鐘前";
+  if (diffMins < 15) return "10分鐘前";
+  if (diffMins < 30) return "30分鐘前";
+  if (diffMins < 60) return "1小時前";
+  if (diffHours < 48) return "昨天";
+  if (diffDays < 7) return "這週";
+  if (diffDays < 15) return "上週";
+  if (diffDays < 30) return "上個月";
+  return "一個月前";
 };
 
 // --- [組件] 自動輪播精選區 ---
@@ -204,27 +225,6 @@ const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
     if (currentUser) {
       msgs.push("歡迎來到校園二手書循環平台，讓書本延續它的旅程！");
     }
-
-    const getRelativeTime = (timestamp) => {
-      if (!timestamp) return '剛剛';
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return "現在";
-      if (diffMins < 5) return "3分鐘前";
-      if (diffMins < 20) return "10分鐘前";
-      if (diffMins < 50) return "30分鐘前";
-      if (diffHours < 24) return "1小時前";
-      if (diffDays < 2) return "昨天";
-      if (diffDays < 7) return "本週"; // "上週" usually means last week, but if it's within 7 days maybe "本週" or just use "上週" as requested for anything > 1 day?
-      // User requested: "上週", "一個月前". I'll map roughly.
-      if (diffDays < 30) return "上週";
-      return "一個月前";
-    };
 
     // Use actual items to generate messages, sort by newest first
     const sortedItems = [...(items || [])].sort((a, b) => {
@@ -427,11 +427,12 @@ const TickerWidget = () => (
 );
 
 
-const WishingWell = ({ wishes, onAddWish, currentUser, currentAvatar }) => {
+const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvatar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [content, setContent] = useState('');
   const [wishImage, setWishImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [deletingWishId, setDeletingWishId] = useState(null); // Track which wish is in delete mode
   const fileInputRef = useRef(null);
 
   // Pagination State
@@ -450,7 +451,7 @@ const WishingWell = ({ wishes, onAddWish, currentUser, currentAvatar }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result, 600, 600); // Wishes can be smaller
+        const compressed = await compressImage(reader.result, 400, 400, 0.5); // Wishes can be small
         setWishImage(compressed);
       };
       reader.readAsDataURL(file);
@@ -498,15 +499,33 @@ const WishingWell = ({ wishes, onAddWish, currentUser, currentAvatar }) => {
 
         {currentWishes.map(wish => {
           const avatar = AVATAR_LIST.find(a => a.id === wish.avatarId) || AVATAR_LIST[0];
+          const isMyWish = wish.uid === currentUser?.uid;
+          const isDeleting = deletingWishId === wish.id;
+
           return (
             <div key={wish.id} className="flex gap-3 border-b last:border-0 pb-3 last:pb-0" style={{ borderColor: COLORS.bgLight }}>
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                <img src={avatar.src} alt="avatar" className="w-full h-full object-cover" />
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer transition-all duration-300 ${isDeleting ? 'bg-red-500 scale-90' : 'bg-gray-100'}`}
+                onClick={() => {
+                  if (!isMyWish) return;
+                  if (isDeleting) {
+                    onDeleteWish(wish.id);
+                    setDeletingWishId(null);
+                  } else {
+                    setDeletingWishId(wish.id);
+                  }
+                }}
+              >
+                {isDeleting ? (
+                  <X size={20} className="text-white animate-bounce-short" />
+                ) : (
+                  <img src={avatar.src} alt="avatar" className="w-full h-full object-cover" />
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm font-bold text-[#756256]">{wish.user}</span>
-                  <span className="text-xs font-normal text-gray-400">{wish.time}</span>
+                  <span className="text-xs font-normal text-gray-400">{getRelativeTime(wish.timestamp)}</span>
                 </div>
                 <p className="text-sm text-[#9E9081]">{wish.content}</p>
                 {wish.image && (
@@ -806,7 +825,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   );
 };
 
-const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishes, onAddWish, books, isLoading, examCountdown }) => {
+const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
@@ -921,7 +940,7 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
 
             {/* <div className="mb-8"><TickerWidget /></div> Removed as moved to header */}
 
-            <WishingWell wishes={wishes} onAddWish={onAddWish} currentUser={user} currentAvatar={currentAvatar} />
+            <WishingWell wishes={wishes} onAddWish={onAddWish} onDeleteWish={onDeleteWish} currentUser={user} currentAvatar={currentAvatar} />
           </>
         )}
         <div className="pb-8">
@@ -976,13 +995,13 @@ const HomePage = ({ onNavigate, user, unreadCount, currentAvatarId, coins, wishe
                       </div>
 
                       <div className="mt-auto flex items-end justify-between border-t pt-2 border-[#E8E3DF]">
-                        <div>
-                          <div className="text-[10px] text-gray-400 mb-1">{book.type === 'gift' || book.price === 0 ? '好心人' : '好書'}</div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-400 mb-1">賣家：{book.seller?.nickname || '同學'}</span>
                           <PriceDisplay type={book.type} price={book.price} />
                         </div>
-                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                          <span>@{book.seller?.nickname || '同學'}</span>
-                          <Heart size={10} className="text-red-400 fill-red-400" /> <span className="font-bold text-red-400">12</span>
+                        <div className="text-[10px] text-gray-400 flex items-center gap-1 scale-90">
+                          <Eye size={12} className="text-gray-400" />
+                          <span className="font-bold">{book.views || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -1053,6 +1072,7 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
   const [tab, setTab] = useState('shelf'); // 'upload', 'shelf', 'store'
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
   const [myListings, setMyListings] = useState(INITIAL_MY_LISTINGS);
+
   const [sellForm, setSellForm] = useState({
     title: '',
     bookType: 'textbook',
@@ -1081,7 +1101,7 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
     if (file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result);
+        const compressed = await compressImage(reader.result, 600, 600, 0.5); // Book cover optimized
         setSellForm({ ...sellForm, coverImagePreview: compressed });
       };
       reader.readAsDataURL(file);
@@ -1512,10 +1532,14 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
     if (!transactionId) return;
     const unsubscribe = chatService.subscribeToMessages(transactionId, (data) => {
       setMessages(data);
+      // Mark as read when messages arrive and chat is open
+      bookService.markAsRead(transactionId, currentUser.uid);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     });
+    // Mark as read immediately when opened
+    bookService.markAsRead(transactionId, currentUser.uid);
     return () => unsubscribe && unsubscribe();
-  }, [transactionId]);
+  }, [transactionId, currentUser.uid]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -1530,7 +1554,7 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result, 800, 800);
+        const compressed = await compressImage(reader.result, 800, 800, 0.7); // Keep quality for details
         setChatImage(compressed);
       };
       reader.readAsDataURL(file);
@@ -1551,12 +1575,12 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
 
   const handleFillTemplate = () => {
     const template = `雙方已達成協議！✅
-若有綁定官方LINE系統將會通知您
-----------------
-**時間**：
-**地點**：
-**書籍名稱**：${bookTitle}
-**價格**：NT$ ${price}`;
+      若有綁定官方LINE系統將會通知您
+      ----------------
+      **時間**：
+      **地點**：
+      **書籍名稱**：${bookTitle}
+      **價格**：NT$ ${price}`;
     setNewMessage(template);
   };
 
@@ -1591,7 +1615,12 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#F9F7F5]">
-        {messages.length === 0 && <div className="text-center text-xs text-gray-400 mt-4">與雙方開始聊天吧！</div>}
+        {messages.length === 0 && (
+          <div className="text-center text-xs text-gray-400 mt-8 space-y-2">
+            <div>與雙方開始聊天吧！</div>
+            <div className="opacity-80">記得確認面交時間和地點<br />決定好由賣家開立明細</div>
+          </div>
+        )}
         {messages.map(msg => {
           const isMe = msg.senderId === currentUser.uid;
           const formatTime = (ts) => {
@@ -1616,12 +1645,12 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
 
       {/* Quick Action Button for Seller */}
       {currentUser.uid === sellerId && (
-        <div className="px-3 py-1.5 bg-[#F9F7F5] border-t">
+        <div className="px-3 py-1.5 bg-[#F9F7F5] flex justify-start">
           <button
             onClick={handleFillTemplate}
-            className="text-[10px] w-full font-bold text-[#756256] border border-[#756256] rounded-md px-2 py-1 transform hover:translate-y-[-1px] transition-all bg-white flex items-center justify-center gap-1 shadow-sm active:translate-y-0"
+            className="text-[10px] w-fit font-bold text-[#756256] border border-[#756256] rounded-md px-3 py-1 transform hover:translate-y-[-1px] transition-all bg-white flex items-center gap-1 shadow-sm active:translate-y-0"
           >
-            面交的時間地點已決定好
+            開立明細
           </button>
         </div>
       )}
@@ -1732,9 +1761,12 @@ const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
           return (
             <div key={chat.id}
               onClick={bookExists ? () => onSelectChat(chat) : (e) => handleDeleteChat(e, chat.id)}
-              className={`p-3 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-100 ${bookExists ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 grayscale hover:bg-gray-200'}`}
+              className={`p-3 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-100 relative ${bookExists ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 grayscale hover:bg-gray-200'}`}
             >
-              <div className="font-bold text-[#756256] text-sm truncate">{chat.bookTitle}</div>
+              {chat.unreadBy?.includes(currentUser.uid) && (
+                <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm z-10" />
+              )}
+              <div className="font-bold text-[#756256] text-sm truncate pr-4">{chat.bookTitle}</div>
               <div className="text-xs text-gray-500 flex justify-between mt-1">
                 {bookExists ? (
                   <>
@@ -1758,8 +1790,29 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [activeChat, setActiveChat] = useState(null); // { transactionId, title }
+  const [activeChat, setActiveChat] = useState(null); // {transactionId, title}
   const [showChatList, setShowChatList] = useState(false);
+  const [userTransactions, setUserTransactions] = useState([]);
+  const hasUnreadMessages = userTransactions.some(t => t.unreadBy?.includes(currentUser?.uid));
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const updateChats = (snapshot) => {
+      const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUserTransactions(prev => {
+        // Merge and replace to avoid duplicates
+        const newMap = new Map(prev.map(p => [p.id, p]));
+        trans.forEach(t => newMap.set(t.id, t));
+        return Array.from(newMap.values());
+      });
+    };
+    const unsubBuyer = bookService.getUserTransactions(currentUser.uid, updateChats);
+    const unsubSeller = bookService.getSellerTransactions(currentUser.uid, updateChats);
+    return () => {
+      unsubBuyer();
+      unsubSeller();
+    };
+  }, [currentUser?.uid]);
 
   // Books
   const [books, setBooks] = useState([]);
@@ -1804,6 +1857,7 @@ const App = () => {
   useEffect(() => {
     let unsubProfile = null;
     let unsubBooks = null;
+    let unsubWishes = null;
 
     const unsubscribe = authService.onAuthStateChanged((user) => {
       if (user) {
@@ -1846,11 +1900,17 @@ const App = () => {
           setIsLoading(false); // Stop loading even on error
         });
 
+        // Fetch Wishes (Global)
+        unsubWishes = bookService.onWishesSnapshot((data) => {
+          setWishes(data);
+        });
+
       } else {
         setCurrentUser(null);
         setCurrentPage('login');
         if (unsubProfile) unsubProfile();
         if (unsubBooks) unsubBooks();
+        if (unsubWishes) unsubWishes();
       }
     });
 
@@ -1859,6 +1919,7 @@ const App = () => {
       unsubscribe();
       if (unsubProfile) unsubProfile();
       if (unsubBooks) unsubBooks();
+      if (unsubWishes) unsubWishes();
     };
   }, []);
 
@@ -1897,8 +1958,29 @@ const App = () => {
     await authService.logout();
   };
 
-  const handleAddWish = (content, image) => {
-    setWishes([{ id: Date.now(), content, image, user: currentUser.nickname || currentUser.email, time: '剛剛', avatarId: currentAvatarId }, ...wishes]);
+  const handleAddWish = async (content, image) => {
+    try {
+      await bookService.addWish({
+        content,
+        image,
+        user: currentUser.nickname || currentUser.realName || currentUser.email,
+        avatarId: currentAvatarId
+      });
+    } catch (e) {
+      console.error("Failed to add wish:", e);
+      alert("許願失敗，請稍後再試");
+    }
+  };
+
+  const handleDeleteWish = async (wishId) => {
+    try {
+      if (window.confirm("確定要收回願望嗎？")) {
+        await bookService.deleteWish(wishId);
+      }
+    } catch (e) {
+      console.error("Failed to delete wish:", e);
+      alert("刪除失敗");
+    }
   };
 
   const handlePurchaseAvatar = async (avatarId, price) => {
@@ -1930,7 +2012,7 @@ const App = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'login': return <LoginPage />;
-      case 'home': return <HomePage onNavigate={navigate} user={currentUser} coins={coins} wishes={wishes} onAddWish={handleAddWish} books={books} isLoading={isLoading} currentAvatarId={currentAvatarId} unreadCount={0} examCountdown={examCountdown} />;
+      case 'home': return <HomePage onNavigate={navigate} user={currentUser} coins={coins} wishes={wishes} onAddWish={handleAddWish} onDeleteWish={handleDeleteWish} books={books} isLoading={isLoading} currentAvatarId={currentAvatarId} unreadCount={0} examCountdown={examCountdown} />;
       case 'product': return <ProductDetailPage product={selectedProduct} currentUser={currentUser} onBack={() => navigate('home')} onContact={async () => {
         try {
           await bookService.startTransaction(selectedProduct, currentUser, (transactionId) => {
@@ -1978,6 +2060,9 @@ const App = () => {
             className="fixed bottom-6 right-6 w-14 h-14 bg-[#756256] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#5D4E44] transition-all transform hover:scale-105 z-40 border-2 border-white"
           >
             {showChatList ? <X size={24} /> : <MessageCircle size={24} />}
+            {!showChatList && hasUnreadMessages && (
+              <div className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-sm animate-pulse" />
+            )}
           </button>
           {showChatList && (
             <ChatList

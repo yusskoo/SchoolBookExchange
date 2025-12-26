@@ -1,4 +1,5 @@
 import { db } from '../config.js';
+import firebase from 'firebase/compat/app';
 
 export const chatService = {
     // Send a message
@@ -6,14 +7,31 @@ export const chatService = {
         if (!content?.trim() && !image) return;
 
         try {
-            const messagesRef = db.collection('transactions').doc(transactionId).collection('messages');
-            await messagesRef.add({
-                senderId,
-                senderName,
-                content: content?.trim() || "",
-                image,
-                timestamp: new Date()
-            });
+            const transactionRef = db.collection('transactions').doc(transactionId);
+            const messagesRef = transactionRef.collection('messages');
+
+            // Get transaction to find the recipient
+            const transDoc = await transactionRef.get();
+            if (transDoc.exists) {
+                const data = transDoc.data();
+                const recipientId = (senderId === data.buyerId) ? data.sellerId : data.buyerId;
+
+                // Add message
+                await messagesRef.add({
+                    senderId,
+                    senderName,
+                    content: content?.trim() || "",
+                    image,
+                    timestamp: new Date()
+                });
+
+                // Update transaction with unread status and preview
+                await transactionRef.update({
+                    lastMessage: content?.trim() || (image ? "[圖片]" : ""),
+                    lastTimestamp: new Date(),
+                    unreadBy: firebase.firestore.FieldValue.arrayUnion(recipientId)
+                });
+            }
         } catch (error) {
             console.error("Error sending message:", error);
             throw error;
