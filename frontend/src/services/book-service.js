@@ -29,9 +29,11 @@ export const bookService = {
             status: 'Available'
         });
     },
-    // 下架書籍 (刪除)
+    // 下架書籍 (刪除) - 改用 Callable Function 以避免權限問題
     async deleteBook(bookId) {
-        return db.collection('books').doc(bookId).delete();
+        const { functions } = await import('../config.js');
+        const deleteBookFn = functions.httpsCallable('deleteBook');
+        return deleteBookFn({ bookId });
     },
     // 預訂書籍 (呼叫 Transaction API)
     async reserveBook(bookId, buyerId, price, meetingTime) {
@@ -141,6 +143,10 @@ export const bookService = {
             status: 'Available',
             timestamp: new Date()
         });
+    },
+    // 新增: 刪除交易 (用於清理下架書籍的聊天室)
+    async deleteTransaction(transactionId) {
+        return db.collection('transactions').doc(transactionId).delete();
     },
     // Helper to record checkin
     recordCheckIn() {

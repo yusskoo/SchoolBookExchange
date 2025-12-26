@@ -41,4 +41,8 @@ const storeHandlers = require('./handlers/store');
 exports.purchaseItem = storeHandlers.purchaseItem;
 exports.dailyCheckIn = storeHandlers.dailyCheckIn;
 
+// Book Handlers
+const bookHandlers = require('./handlers/book');
+exports.deleteBook = bookHandlers.deleteBook;
+
 // Calendar Handlers (Already exported above)

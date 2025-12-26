@@ -723,6 +723,7 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
     coverImagePreview: null
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState(null);
 
   useEffect(() => {
     if (user?.uid) {
@@ -803,17 +804,22 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
     }
   };
 
-  const handleDeleteBook = async (bookId, e) => {
-    e.stopPropagation(); // Prevent card click
-    if (window.confirm("是否確定要下架該書籍?")) {
-      try {
-        await bookService.deleteBook(bookId);
-        alert("已下架");
-        // State update is handled by onSnapshot, ensuring UI syncs with DB
-      } catch (error) {
-        console.error("Deletion failed:", error);
-        alert("下架失敗: " + error.message);
-      }
+  const handleDeleteBook = (bookId, e) => {
+    e.stopPropagation();
+    setBookToDelete(bookId);
+  };
+
+  const confirmDeleteBook = async () => {
+    if (!bookToDelete) return;
+    const bookId = bookToDelete;
+
+    try {
+      await bookService.deleteBook(bookId);
+      // alert("已下架"); // Optional: Removed for cleaner UI, or use toast
+      setBookToDelete(null);
+    } catch (error) {
+      console.error("Deletion failed:", error);
+      alert("下架失敗: " + error.message);
     }
   };
 
@@ -1087,6 +1093,32 @@ const ProfilePage = ({ onBack, user, onLogout, coins, myAvatars, currentAvatarId
           </div>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {bookToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={() => setBookToDelete(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-xl transform transition-all scale-100" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-[#756256] mb-4">確定要下架嗎？</h3>
+            <p className="text-gray-500 mb-6 text-sm">此動作無法復原，商品將從架上移除。</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBookToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 font-bold text-gray-500 hover:bg-gray-50 transition-colors"
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmDeleteBook}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-md"
+                type="button"
+              >
+                確認下架
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1163,7 +1195,7 @@ const ChatRoom = ({ transactionId, currentUser, title, onClose }) => {
 };
 
 // --- ChatList Component (New) ---
-const ChatList = ({ currentUser, onSelectChat, onClose }) => {
+const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
   const [chats, setChats] = useState([]);
 
   useEffect(() => {
@@ -1188,6 +1220,18 @@ const ChatList = ({ currentUser, onSelectChat, onClose }) => {
     };
   }, [currentUser]);
 
+  const handleDeleteChat = async (e, chatId) => {
+    e.stopPropagation();
+    if (window.confirm("確認刪除此聊天室？")) {
+      try {
+        await bookService.deleteTransaction(chatId);
+        setChats(prev => prev.filter(c => c.id !== chatId));
+      } catch (error) {
+        console.error("Delete chat failed", error);
+      }
+    }
+  };
+
   return (
     <div className="fixed bottom-24 right-4 w-80 max-h-96 bg-white rounded-xl shadow-2xl flex flex-col z-50 animate-slide-up border border-stone-200 overflow-hidden">
       <div className="bg-[#756256] text-white p-3 flex justify-between items-center">
@@ -1196,18 +1240,31 @@ const ChatList = ({ currentUser, onSelectChat, onClose }) => {
       </div>
       <div className="overflow-y-auto p-2 space-y-2 bg-[#F9F7F5] flex-1">
         {chats.length === 0 && <div className="text-center text-gray-400 py-4 text-sm">尚無聊天記錄</div>}
-        {chats.map(chat => (
-          <div key={chat.id} onClick={() => onSelectChat({ transactionId: chat.id, title: chat.bookTitle })}
-            className="p-3 bg-white hover:bg-gray-50 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-100">
-            <div className="font-bold text-[#756256] text-sm truncate">{chat.bookTitle}</div>
-            <div className="text-xs text-gray-500 flex justify-between mt-1">
-              <span>{chat.buyerId === currentUser.uid ? '向賣家提問' : '來自買家'}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] ${chat.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                {chat.status === 'Pending' ? '進行中' : chat.status}
-              </span>
+        {chats.map(chat => {
+          // Check if book still exists
+          const bookExists = books.some(b => b.id === chat.bookId);
+
+          return (
+            <div key={chat.id}
+              onClick={bookExists ? () => onSelectChat({ transactionId: chat.id, title: chat.bookTitle }) : (e) => handleDeleteChat(e, chat.id)}
+              className={`p-3 rounded-lg cursor-pointer transition-colors shadow-sm border border-gray-100 ${bookExists ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 grayscale hover:bg-gray-200'}`}
+            >
+              <div className="font-bold text-[#756256] text-sm truncate">{chat.bookTitle}</div>
+              <div className="text-xs text-gray-500 flex justify-between mt-1">
+                {bookExists ? (
+                  <>
+                    <span>{chat.buyerId === currentUser.uid ? '向賣家提問' : '來自買家'}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${chat.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {chat.status === 'Pending' ? '進行中' : chat.status}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-500 font-bold w-full text-center">(此書已下架，點擊一下刪除聊天室)</span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1434,6 +1491,7 @@ const App = () => {
           {showChatList && (
             <ChatList
               currentUser={currentUser}
+              books={books}
               onSelectChat={(chat) => {
                 setActiveChat(chat);
                 setShowChatList(false);
