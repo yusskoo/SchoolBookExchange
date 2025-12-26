@@ -27,4 +27,4 @@ if (hostname === "localhost" || hostname === "127.0.0.1") {
     functions.useEmulator("127.0.0.1", 5001);
 }
 
-export { db, auth, functions };
+export { db, auth, functions, firebase };

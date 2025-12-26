@@ -40,9 +40,10 @@ const CATEGORIES = [
 ];
 
 
-// 新增橫向捲動分區組件
+// --- 全域組件：頭像橫向捲動列 (首頁與個人專區商店使用) ---
 const AvatarRow = ({ title, avatars, onPurchase, onEquip, currentAvatarId, myAvatars, coins }) => (
   <div className="mb-8">
+    {/* 標題與裝飾條 */}
     {/* 分區標題與左側咖啡色裝飾條 */}
     <h4 className="font-bold text-[#756256] mb-4 flex items-center gap-2 px-1 text-sm md:text-base">
       <span className="w-1.5 h-5 bg-[#A58976] rounded-full"></span>
@@ -52,16 +53,16 @@ const AvatarRow = ({ title, avatars, onPurchase, onEquip, currentAvatarId, myAva
     {/* 橫向捲動容器 */}
     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
       {avatars.map(avatar => {
-        const isOwned = myAvatars.includes(avatar.id);
+        const isOwned = myAvatars.includes(avatar.id) || avatar.id === 'classic-1';
         const isEquipped = currentAvatarId === avatar.id;
         const canAfford = coins >= avatar.price;
 
         return (
           <div key={avatar.id} className="min-w-[110px] bg-white border rounded-2xl p-3 flex flex-col items-center shadow-sm" style={{ borderColor: '#E8E3DF' }}>
             <div className="w-14 h-14 rounded-full overflow-hidden mb-3 bg-gray-50 border p-1">
-              <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover rounded-full" />
+              <img src={optimizeImage(avatar.src)} alt={avatar.name} className="w-full h-full object-cover rounded-full" />
             </div>
-            <div className="font-bold text-[10px] text-[#5D4037] mb-3 truncate w-full text-center">{avatar.name}</div>
+            <div className="font-bold text-xs text-[#5D4037] mb-3 truncate w-full text-center">{avatar.name}</div>
 
             <button
               onClick={() => isOwned ? onEquip(avatar.id) : onPurchase(avatar.id, avatar.price)}
@@ -83,10 +84,18 @@ const AvatarRow = ({ title, avatars, onPurchase, onEquip, currentAvatarId, myAva
 
 // --- [修改] 頭像列表資料 (Demo Version) ---
 const AVATAR_LIST = [
-  // [類別 1] 預設
+  // [類別 4] 預設角色 (經典系列第一支)
   {
-    id: 'default',
-    name: '初始初心者',
+    id: 'classic-1',
+    name: '熬夜貓貓',
+    price: 0,
+    src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700'
+  },
+
+  // [類別 1] 期間限定禮物
+  {
+    id: 'pony-gift',
+    name: '限定小馬',
     price: 0,
     src: 'https://i.postimg.cc/9fW28Bc0/niu.jpg'
   },
@@ -124,11 +133,10 @@ const AVATAR_LIST = [
   },
 
   // [類別 3] 經典系列
-  { id: 'cat', name: '熬夜貓貓', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700' },
-  { id: 'glasses', name: '考滿分', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
-  { id: 'cool', name: '校園酷蓋', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
-  { id: 'artist', name: '文藝青年', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
-  { id: 'robot', name: '理科腦', price: 100, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
+  { id: 'classic-2', name: '考滿分', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
+  { id: 'classic-3', name: '校園酷蓋', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
+  { id: 'classic-4', name: '文藝青年', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
+  { id: 'classic-5', name: '理科腦', price: 100, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
 ];
 
 
@@ -157,6 +165,13 @@ const getRelativeTime = (timestamp) => {
   return date.toLocaleDateString();
 };
 
+// 圖片優化代理 (加速外部圖片載入)
+const optimizeImage = (url, width = 150, quality = 50) => {
+  if (!url || (!url.includes('postimg.cc') && !url.includes('api.dicebear.com'))) return url;
+  // 使用 weserv.nl 進行快取與壓縮
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${width}&q=${quality}&output=webp`;
+};
+
 const normalizeTime = (timeStr) => {
   if (!timeStr) return "";
   // Match format like "1/5 7:20" or "01/05 07:20" or "1/5 07:20" etc.
@@ -182,6 +197,7 @@ const SkeletonCard = () => (
   </div>
 );
 
+// --- 輔助函數：圖片壓縮處理 ---
 const compressImage = (base64Str, maxWidth = 800, maxHeight = 800, quality = 0.6) => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -370,6 +386,7 @@ const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
   );
 };
 
+// --- [組件] 首頁：考前倒數計時卡片 ---
 const ExamWidget = ({ examCountdown }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const exams = examCountdown?.exams || [];
@@ -434,6 +451,7 @@ const TickerWidget = () => (
 );
 
 
+// --- [組件] 首頁：許願池區塊 (留言板) ---
 const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvatar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [content, setContent] = useState('');
@@ -526,7 +544,7 @@ const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvat
                 {isDeleting ? (
                   <X size={20} className="text-white animate-bounce-short" />
                 ) : (
-                  <img src={avatar.src} alt="avatar" className="w-full h-full object-cover" />
+                  <img src={optimizeImage(avatar.src, 100, 60)} alt="avatar" className="w-full h-full object-cover" />
                 )}
               </div>
               <div className="flex-1">
@@ -625,6 +643,7 @@ const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvat
   );
 };
 
+// --- [頁面] 登入與註冊頁面 ---
 const LoginPage = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -705,7 +724,7 @@ const LoginPage = ({ onLogin }) => {
   );
 };
 
-// --- 商品詳情頁 ---
+// --- [頁面] 商品詳情頁面 ---
 const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   if (!product) return null;
   const isOwner = (currentUser?.uid && product.sellerId && String(currentUser.uid) === String(product.sellerId)) ||
@@ -832,6 +851,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   );
 };
 
+// --- [頁面] 主頁面 (包含橫幅、精選、書籍清單) ---
 const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown, onToggleNotifications, hasUnreadNotifications }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -900,6 +920,7 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
     }
   };
 
+  // --- [頁面渲染] 主頁面 (HomePage) ---
   return (
     <div className="min-h-screen pb-20" style={{ ...fontStyle, backgroundColor: COLORS.bgLight, color: COLORS.brownWindmill }}>
       <div className="pt-6 pb-12 px-4 rounded-b-[2rem] shadow-lg" style={{ background: `linear-gradient(135deg, ${COLORS.chocolateBubble}, ${COLORS.brownWindmill})`, color: COLORS.bgLight }}>
@@ -909,7 +930,7 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
             <div className="flex items-center gap-3">
               <button onClick={handleResetHome} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Home size={20} /></button>
               <button onClick={onToggleNotifications} className="relative p-2 hover:bg-white/10 rounded-full transition-colors"><Bell size={20} />{hasUnreadNotifications && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />}</button>
-              <button onClick={() => onNavigate('profile')} className="flex items-center gap-2 hover:bg-white/20 pl-1 pr-3 py-1 rounded-full transition-all border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-white/20"><img src={currentAvatar.src} alt="avatar" className="w-full h-full object-cover" /></div><span className="hidden sm:inline text-sm font-medium tracking-wide">{user.nickname || user.email}</span></button>
+              <button onClick={() => onNavigate('profile')} className="flex items-center gap-2 hover:bg-white/20 pl-1 pr-3 py-1 rounded-full transition-all border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-white/20"><img src={optimizeImage(currentAvatar.src, 100, 50)} alt="avatar" className="w-full h-full object-cover" /></div><span className="hidden sm:inline text-sm font-medium tracking-wide">{user.nickname || user.email}</span></button>
             </div>
           </div>
           <div className="max-w-3xl mx-auto mt-2">
@@ -986,10 +1007,13 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
                     {/* Image Area - Square Aspect Ratio */}
                     <div className="relative aspect-square bg-[#F9F7F5] overflow-hidden">
                       <img src={book.cover || book.imageBase64 || "https://dummyimage.com/400x400/eee/aaa"} alt={book.title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
-                      {/* Badge */}
+                      {/* 商品狀態標籤：贈送/販售 */}
                       <div
-                        className="absolute top-0 right-0 px-3 py-1.5 text-white text-xs font-bold shadow-sm rounded-bl-lg z-10"
-                        style={{ backgroundColor: (book.type === 'gift' || book.price === 0) ? COLORS.chocolateBubble : COLORS.brownWindmill }}
+                        className="absolute top-0 right-0 px-3 py-1.5 text-xs font-bold shadow-sm rounded-bl-lg z-10"
+                        style={{
+                          backgroundColor: (book.type === 'gift' || book.price === 0) ? '#E6DBC6' : COLORS.brownWindmill,
+                          color: (book.type === 'gift' || book.price === 0) ? '#756256' : '#FFFFFF'
+                        }}
                       >
                         {book.type === 'gift' || book.price === 0 ? '贈送' : '販售'}
                       </div>
@@ -1077,7 +1101,7 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
   );
 };
 
-// ... ProfilePage similar to new_front.js but hooks up with services ...
+// --- [頁面] 個人專區 (包含我的書櫃、上架功能、頭像商店) ---
 const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, currentAvatarId, onPurchase, onEquip }) => {
   const [tab, setTab] = useState('shelf'); // 'upload', 'shelf', 'store'
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
@@ -1208,6 +1232,7 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
 
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
 
+  // --- [頁面渲染] 個人專區 (ProfilePage) ---
   return (
     <div className="min-h-screen pb-20" style={{ ...fontStyle, backgroundColor: COLORS.bgLight, color: COLORS.brownWindmill }}>
       <nav className="backdrop-blur-md shadow-sm border-b sticky top-0 z-50" style={{ backgroundColor: 'rgba(255,255,255,0.8)', borderColor: COLORS.whiteBucks }}>
@@ -1222,7 +1247,7 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
         <div className="flex flex-col items-center">
           <div className="relative group cursor-pointer" onClick={() => setTab('store')}>
             <div className="w-24 h-24 rounded-full border-4 shadow-md overflow-hidden bg-white" style={{ borderColor: COLORS.bgLight }}>
-              <img src={currentAvatar.src} className="w-full h-full object-cover" alt="User" />
+              <img src={optimizeImage(currentAvatar.src, 200, 70)} className="w-full h-full object-cover" alt="User" />
             </div>
             <div className="absolute bottom-0 right-0 text-white p-1.5 rounded-full border-2 border-white shadow-sm flex items-center justify-center" style={{ backgroundColor: COLORS.chocolateBubble, width: 28, height: 28 }}>
               <Palette size={14} />
@@ -1239,7 +1264,7 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
         {/* Tabs */}
         <div className="flex border rounded-lg overflow-hidden bg-white p-1" style={{ borderColor: COLORS.whiteBucks }}>
           <button onClick={() => setTab('shelf')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${tab === 'shelf' ? 'bg-[#F9F7F5] text-[#756256]' : 'text-gray-400 hover:text-gray-600'}`}>我的書櫃</button>
-          <button onClick={() => setTab('upload')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${tab === 'upload' ? 'bg-[#F9F7F5] text-[#756256]' : 'text-gray-400 hover:text-gray-600'}`}>上架書籍</button>
+          <button onClick={() => setTab('upload')} className="flex-1 py-2 text-sm font-bold rounded-md transition-all bg-[#A58976] text-white shadow-sm ring-1 ring-white/20">上架書籍</button>
           <button onClick={() => setTab('store')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${tab === 'store' ? 'bg-[#F9F7F5] text-[#756256]' : 'text-gray-400 hover:text-gray-600'}`}>頭像商店</button>
         </div>
 
@@ -1429,47 +1454,37 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
           </div>
         ) : tab === 'store' ? (
           <div className="bg-white rounded-xl shadow-sm border p-4 animate-fade-in" style={{ borderColor: COLORS.whiteBucks }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[#756256] flex items-center gap-2"><Store size={20} /> 頭像交易所</h3>
-              <span className="text-xs text-[#9E9081]">預設圖片之後可更換</span>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-[#756256] flex items-center gap-2 text-lg"><Store size={22} /> 頭像交易中心</h3>
+              <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full text-xs font-bold text-yellow-700 shadow-sm border border-yellow-200">
+                <Coins size={14} fill="currentColor" /> {coins} 書香幣
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {AVATAR_LIST.map(avatar => {
-                const isOwned = myAvatars.includes(avatar.id);
-                const isEquipped = currentAvatarId === avatar.id;
-                const canAfford = coins >= avatar.price;
 
-                return (
-                  <div key={avatar.id} className={`border rounded-lg p-3 flex flex-col items-center relative transition-all ${isEquipped ? 'ring-2 ring-[#A58976] bg-[#F9F7F5]' : 'hover:border-[#A58976]'}`} style={{ borderColor: COLORS.whiteBucks }}>
-                    {isEquipped && <div className="absolute top-2 right-2 text-green-500"><CheckCircle size={16} fill="currentColor" className="text-white" /></div>}
+            {/* [類別 1] 限定收獲 */}
+            <AvatarRow
+              title="限定收藏"
+              avatars={AVATAR_LIST.filter(a => a.id.startsWith('special') || a.id === 'pony-gift')}
+              onPurchase={onPurchase}
+              onEquip={onEquip}
+              currentAvatarId={currentAvatarId}
+              myAvatars={myAvatars}
+              coins={coins}
+            />
 
-                    <div className="w-16 h-16 rounded-full overflow-hidden mb-2 bg-gray-100">
-                      <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="font-bold text-sm text-[#5D4037] mb-1">{avatar.name}</div>
+            {/* [類別 2] 經典系列 */}
+            <AvatarRow
+              title="經典系列"
+              avatars={AVATAR_LIST.filter(a => !['pony-gift'].includes(a.id) && !a.id.startsWith('special'))}
+              onPurchase={onPurchase}
+              onEquip={onEquip}
+              currentAvatarId={currentAvatarId}
+              myAvatars={myAvatars}
+              coins={coins}
+            />
 
-                    {isOwned ? (
-                      <button
-                        onClick={() => onEquip(avatar.id)}
-                        disabled={isEquipped}
-                        className={`w-full py-1 text-xs rounded font-bold ${isEquipped ? 'text-gray-400 cursor-default' : 'bg-[#756256] text-white hover:bg-[#5D4E44]'}`}
-                      >
-                        {isEquipped ? '使用中' : '更換'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onPurchase(avatar.id, avatar.price)}
-                        disabled={!canAfford}
-                        className={`w-full py-1 text-xs rounded font-bold flex items-center justify-center gap-1 ${canAfford ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                      >
-                        <Coins size={10} /> {avatar.price}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </div>
+
         ) : (
           <div className="space-y-4 animate-fade-in">
             {myListings.length === 0 ? (
@@ -1528,8 +1543,8 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
 
 // ... (previous helper functions)
 
-// --- [New] 聊天室組件 (ChatRoom) ---
-const ChatRoom = ({ transaction, currentUser, onClose }) => {
+// --- [組件] 聊天對話視窗 (與賣家/買家聯繫) ---
+const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
   const { id: transactionId, sellerId, bookTitle, price } = transaction;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -1627,12 +1642,19 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
     );
   };
 
+  // --- [組件渲染] 聊天視窗 (ChatRoom) ---
   return (
     <div className="fixed bottom-4 right-4 w-80 h-[450px] bg-white rounded-t-xl rounded-bl-xl shadow-2xl flex flex-col z-50 animate-slide-up border border-stone-200 overflow-hidden">
       {/* Header */}
       <div className="bg-[#756256] text-white p-3 flex justify-between items-center shadow-md">
         <div className="flex items-center gap-2">
-          <MessageCircle size={18} />
+          <button
+            onClick={onBackToList}
+            className="hover:bg-white/20 p-1.5 rounded-lg transition-all active:scale-95 group"
+            title="返回我的訊息"
+          >
+            <MessageCircle size={18} className="group-hover:animate-pulse" />
+          </button>
           <span className="font-bold text-sm truncate max-w-[150px]">{bookTitle || "聊天室"}</span>
         </div>
         <button onClick={onClose} className="hover:bg-white/20 rounded-full p-1 transition-colors"><X size={16} /></button>
@@ -1646,8 +1668,27 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
             <div className="opacity-80">記得確認面交時間和地點<br />決定好由賣家開立明細</div>
           </div>
         )}
-        {messages.map(msg => {
+        {messages.map((msg, index) => {
           const isMe = msg.senderId === currentUser.uid;
+          const msgDate = msg.timestamp?.toDate ? msg.timestamp.toDate() : new Date(msg.timestamp);
+
+          // Check if we need to show a date separator
+          let showSeparator = false;
+          let dateStr = "";
+          if (index === 0) {
+            showSeparator = true;
+          } else {
+            const prevMsg = messages[index - 1];
+            const prevDate = prevMsg.timestamp?.toDate ? prevMsg.timestamp.toDate() : new Date(prevMsg.timestamp);
+            if (msgDate.toLocaleDateString() !== prevDate.toLocaleDateString()) {
+              showSeparator = true;
+            }
+          }
+
+          if (showSeparator) {
+            dateStr = `${msgDate.getMonth() + 1}/${msgDate.getDate()}`;
+          }
+
           const formatTime = (ts) => {
             if (!ts) return '';
             const date = ts.toDate ? ts.toDate() : new Date(ts);
@@ -1656,13 +1697,22 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
           const timeStr = formatTime(msg.timestamp);
 
           return (
-            <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
-              {isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
-              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none'}`}>
-                {renderMessageContent(msg.content, msg.image)}
+            <React.Fragment key={msg.id}>
+              {showSeparator && (
+                <div className="flex items-center justify-center my-4">
+                  <div className="bg-gray-200/50 text-gray-500 text-[10px] px-3 py-1 rounded-full font-bold">
+                    {dateStr}
+                  </div>
+                </div>
+              )}
+              <div className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                {isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
+                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm shadow-sm break-words ${isMe ? 'bg-[#756256] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none'}`}>
+                  {renderMessageContent(msg.content, msg.image)}
+                </div>
+                {!isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
               </div>
-              {!isMe && <span className="text-[10px] text-gray-400 mb-1 flex-shrink-0">{timeStr}</span>}
-            </div>
+            </React.Fragment>
           );
         })}
         <div ref={messagesEndRef} />
@@ -1690,7 +1740,7 @@ const ChatRoom = ({ transaction, currentUser, onClose }) => {
             onClick={handleFillTemplate}
             className="text-[10px] w-fit font-bold text-[#756256] border border-[#756256] rounded-md px-3 py-1 transform hover:translate-y-[-1px] transition-all bg-white flex items-center gap-1 shadow-sm active:translate-y-0"
           >
-            🤝開立明細
+            ✅開立明細
           </button>
         )}
       </div>
@@ -1922,9 +1972,10 @@ const App = () => {
   // Coins Widget ... 
   const [coins, setCoins] = useState(0);
   const [showCheckInModal, setShowCheckInModal] = useState(false); // Modal state
+  const [showPonyGiftModal, setShowPonyGiftModal] = useState(false); // New user gift modal
   const [wishes, setWishes] = useState(INITIAL_WISHES);
-  const [myAvatars, setMyAvatars] = useState(['default']);
-  const [currentAvatarId, setCurrentAvatarId] = useState('default'); // Could be persisted in DB too
+  const [myAvatars, setMyAvatars] = useState(['classic-1']);
+  const [currentAvatarId, setCurrentAvatarId] = useState('classic-1'); // Default is now classic-1 (cat)
 
   useEffect(() => {
     let unsubProfile = null;
@@ -1944,7 +1995,12 @@ const App = () => {
             const data = doc.data();
             setCurrentUser(prev => ({ ...prev, ...data, uid: user.uid })); // Ensure uid persists
             setCoins(data.coins || 0);
-            setMyAvatars(data.myAvatars || ['default']);
+            setMyAvatars(data.myAvatars || ['classic-1']);
+
+            // Detect Newborn Pony Gift (if not claimed)
+            if (!data.ponyGiftClaimed) {
+              setShowPonyGiftModal(true);
+            }
 
             // Check In Logic
             const checkDailyCheckIn = async () => {
@@ -2003,6 +2059,52 @@ const App = () => {
       if (unsubNotifications) unsubNotifications();
     };
   }, []);
+
+  const PonyGiftModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-[2rem] p-8 w-full max-w-sm text-center relative shadow-2xl transform transition-all animate-scale-up" onClick={e => e.stopPropagation()}>
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+          <div className="bg-gradient-to-br from-yellow-300 to-orange-400 p-4 rounded-full shadow-lg border-4 border-white">
+            <Sparkles size={40} className="text-white animate-pulse" />
+          </div>
+        </div>
+        <div className="mt-8">
+          <h3 className="text-2xl font-black text-[#756256] mb-4">歡迎來到循環平台！✨</h3>
+          <p className="text-gray-500 mb-8 leading-relaxed">
+            為了慶祝您的加入，<br />
+            特別送上 <span className="text-orange-500 font-bold">限定小馬</span> 頭像！
+          </p>
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-24 h-24 rounded-full border-4 border-orange-100 p-1 bg-white shadow-inner mb-3">
+              <img src={optimizeImage("https://i.postimg.cc/9fW28Bc0/niu.jpg", 200, 70)} alt="Pony Gift" className="w-full h-full object-cover rounded-full" />
+            </div>
+            <span className="text-xs font-bold text-gray-400">期間限定小馬</span>
+          </div>
+          <button
+            onClick={handleClaimPony}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#A58976] to-[#756256] text-white font-bold hover:shadow-xl transition-all active:scale-95 text-lg"
+          >
+            立即領取
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const handleClaimPony = async () => {
+    try {
+      const { db, firebase } = await import('./config');
+      await db.collection('users').doc(currentUser.uid).update({
+        myAvatars: firebase.firestore.FieldValue.arrayUnion('pony-gift'),
+        ponyGiftClaimed: true
+      });
+      setShowPonyGiftModal(false);
+      alert("領取成功！已放入您的頭像庫 ✨");
+    } catch (e) {
+      console.error(e);
+      alert("領取失敗，請稍後再試");
+    }
+  };
 
   const CheckInModal = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={() => setShowCheckInModal(false)}>
@@ -2136,14 +2238,22 @@ const App = () => {
   };
 
   return (
-    <>
-      {renderPage()}
+    <div className="min-h-screen flex flex-col bg-[#F9F7F5]">
+      <div className="flex-1">
+        {renderPage()}
+      </div>
+      {currentPage !== 'login' && <Footer />}
       {showCheckInModal && <CheckInModal />}
+      {showPonyGiftModal && <PonyGiftModal />}
       {activeChat && (
         <ChatRoom
           transaction={activeChat}
           currentUser={currentUser}
           onClose={() => setActiveChat(null)}
+          onBackToList={() => {
+            setActiveChat(null);
+            setShowChatList(true);
+          }}
         />
       )}
 
@@ -2182,8 +2292,48 @@ const App = () => {
           )}
         </>
       )}
-    </>
+    </div>
   );
 };
+
+const Footer = () => (
+  <footer className="bg-[#756256] text-[#E8E3DF] py-12 px-6 mt-12 border-t border-white/10">
+    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 justify-center md:justify-start">
+          <BookOpen size={24} className="text-[#A58976]" />
+          <span className="text-xl font-black tracking-tight text-white">SchoolBook Exchange</span>
+        </div>
+        <p className="text-xs opacity-70 leading-relaxed font-medium">
+          致力於打造全台最流暢、最溫暖的高中二手書交易平台。<br />
+          讓知識循環，讓書本找到下一個主人。
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 justify-center">
+        <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">平台概況</div>
+        <div className="text-xs opacity-80 flex items-center gap-2 justify-center md:justify-start hover:opacity-100 transition-opacity cursor-default">
+          <ShieldCheck size={14} /> 安全交易保障
+        </div>
+        <div className="text-xs opacity-80 flex items-center gap-2 justify-center md:justify-start hover:opacity-100 transition-opacity cursor-default">
+          <Zap size={14} /> 快速即時對話
+        </div>
+        <div className="text-xs opacity-80 flex items-center gap-2 justify-center md:justify-start hover:opacity-100 transition-opacity cursor-default">
+          <Repeat size={14} /> 知識永續循環
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 justify-center">
+        <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">聯絡我們</div>
+        <div className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start">
+          <Mail size={14} /> service@shsh.tw
+        </div>
+        <div className="text-[10px] opacity-50 mt-4 font-mono">
+          © 2025 SchoolBook Exchange. All rights reserved.
+        </div>
+      </div>
+    </div>
+  </footer>
+);
 
 export default App;
