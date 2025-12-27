@@ -30,6 +30,8 @@ exports.updateTransactionStatus = transactionHandlers.updateTransactionStatus;
 exports.requestReschedule = transactionHandlers.requestReschedule;
 exports.respondToReschedule = transactionHandlers.respondToReschedule;
 exports.confirmTransactionTime = transactionHandlers.confirmTransactionTime;
+exports.onMessageCreate = transactionHandlers.onMessageCreate;
+exports.debugInvoice = transactionHandlers.debugInvoice;
 
 // --- Calendar & Review ---
 exports.getExamCountdown = calendarHandlers.getExamCountdown;

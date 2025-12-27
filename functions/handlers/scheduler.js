@@ -11,10 +11,11 @@ exports.checkMeetingReminders = functions.https.onRequest(async (req, res) => {
         // 1. 找出需要通知的交易
         // 條件: status == 'Pending' (or Invoiced?), meetingTime <= now, isMeetingNudgeSent != true
         // Invoice 已經發送才會有點意義
-        const now = admin.firestore.Timestamp.now();
+        const { Timestamp } = require("firebase-admin/firestore");
+        const now = Timestamp.now();
 
         const snapshot = await db.collection("transactions")
-            .where("status", "==", "Pending") // 假設還沒 Completed/Canceled
+            .where("status", "in", ["Pending", "Invoiced"]) // 包含已開立明細的交易
             .where("meetingTime", "<=", now)
             .get();
 

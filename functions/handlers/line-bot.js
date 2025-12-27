@@ -255,6 +255,15 @@ async function handlePostback(event, db) {
 
         const trans = doc.data();
 
+        // [Fix] Prevent Double Click
+        if (trans.status === "Completed" || trans.status === "Failed" || trans.status === "Canceled") {
+          // Transaction finalized, ignore update
+          // We can't reply from inside transaction easily without throwing, 
+          // but we can check before transaction or here.
+          // If we throw, we can catch and reply.
+          throw new Error("TransFinalized");
+        }
+
         // 標記此用戶已確認
         const confirmKey = trans.buyerId === userId ? "buyerConfirmed" : "sellerConfirmed";
         const updates = {
@@ -280,6 +289,16 @@ async function handlePostback(event, db) {
         "感謝您的回報，等待對方確認後交易將自動完成。",
       );
     } else if (action === "report_fail") {
+      // 檢查狀態防止重複點擊
+      const currentDoc = await transRef.get();
+      if (currentDoc.exists) {
+        const tData = currentDoc.data();
+        if (tData.status === "Completed" || tData.status === "Failed" || tData.status === "Canceled") {
+          await lineService.replyMessage(event.replyToken, "⚠️ 此交易已結束，按鈕已失效。");
+          return;
+        }
+      }
+
       // 面交失敗
       await transRef.update({
         status: "Failed",
@@ -310,7 +329,11 @@ async function handlePostback(event, db) {
       });
     }
   } catch (e) {
-    console.error("Postback handling error:", e);
+    if (e.message === "TransFinalized") {
+      await lineService.replyMessage(event.replyToken, "⚠️ 此交易已結束，按鈕已失效。");
+    } else {
+      console.error("Postback handling error:", e);
+    }
   }
 }
 
@@ -369,14 +392,20 @@ exports.sendInvoiceNotification = async (transaction, db) => {
 
 // 建立 Flex Message 格式的交易明細
 function createInvoiceFlexMessage(transaction, buyerNickname, sellerNickname) {
-  const { bookTitle, agreedPrice, meetingTime, meetingLocation } = transaction;
+  console.log("Creating Invoice Flex with:", JSON.stringify(transaction)); // Debug Log
+  const { bookTitle, agreedPrice, price, meetingTime, meetingLocation } = transaction;
+
+  // Fix: Handle 0 properly
+  const finalPrice = (agreedPrice !== undefined && agreedPrice !== null) ? agreedPrice : (price || 0);
 
   const timeStr = meetingTime ?
     new Date(meetingTime.toDate ? meetingTime.toDate() : meetingTime).toLocaleString("zh-TW", {
+      timeZone: "Asia/Taipei",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false
     }) :
     "未設定";
 
@@ -409,7 +438,7 @@ function createInvoiceFlexMessage(transaction, buyerNickname, sellerNickname) {
         contents: [
           {
             type: "text",
-            text: bookTitle,
+            text: "《" + (bookTitle || "未知書籍") + "》",
             weight: "bold",
             size: "xl",
             margin: "md",
@@ -483,7 +512,7 @@ function createInvoiceFlexMessage(transaction, buyerNickname, sellerNickname) {
                   },
                   {
                     type: "text",
-                    text: `NT$ ${agreedPrice || price || 0}`,
+                    text: `NT$ ${finalPrice}`,
                     wrap: true,
                     color: "#A58976",
                     size: "md",

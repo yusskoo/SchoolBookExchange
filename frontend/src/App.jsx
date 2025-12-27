@@ -694,7 +694,7 @@ const LoginPage = ({ onLogin }) => {
           console.error("Profile completion failed", profileError);
           alert("註冊成功，但在建立個人資料時發生錯誤，請稍後聯繫管理員。");
         }
-        alert("註冊成功！請直接登入");
+        alert("系統將為您自動登入");
         setIsRegistering(false);
       } else {
         await authService.login(email, password);
@@ -1232,6 +1232,14 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
     if (!bookToDelete) return;
     const bookId = bookToDelete;
 
+    // Check status locally (from myListings)
+    const book = myListings.find(b => b.id === bookId);
+    if (book && (book.status === 'Reserved' || book.status === 'Sold')) {
+      alert("此書籍正在交易中或已售出，無法下架！");
+      setBookToDelete(null);
+      return;
+    }
+
     try {
       await bookService.deleteBook(bookId);
       // alert("已下架"); // Optional: Removed for cleaner UI, or use toast
@@ -1283,9 +1291,15 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
             <Coins size={14} fill="currentColor" /> {coins} 書香幣
           </div>
 
-          <button onClick={handleLineBind} className="mt-3 px-4 py-1.5 bg-[#06C755] text-white text-xs font-bold rounded-full shadow-sm hover:bg-[#05b34c] transition-colors flex items-center gap-1">
-            <MessageCircle size={14} /> 綁定 LINE 通知
-          </button>
+          {user.isLineNotifyEnabled ? (
+            <button disabled className="mt-3 px-4 py-1.5 bg-[#E8E3DF] text-[#756256] text-xs font-bold rounded-full shadow-sm flex items-center gap-1 cursor-default border border-[#C9C3B6]">
+              <CheckCircle size={14} className="text-[#06C755]" /> 已綁定 LINE
+            </button>
+          ) : (
+            <button onClick={handleLineBind} className="mt-3 px-4 py-1.5 bg-[#06C755] text-white text-xs font-bold rounded-full shadow-sm hover:bg-[#05b34c] transition-colors flex items-center gap-1">
+              <MessageCircle size={14} /> 綁定 LINE 通知
+            </button>
+          )}
         </div>
 
         {/* Tabs */}
@@ -1523,7 +1537,12 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
                     <img src={item.cover} className="w-full h-full object-cover" alt={item.title} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[#756256] truncate">{item.title}</h3>
+                    <div className="flex justify-between items-center mb-1">
+                      <h3 className="font-bold text-[#756256] truncate">{item.title}</h3>
+                      {/* Status Tags */}
+                      {item.status === 'Reserved' && <span className="flex-shrink-0 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap ml-2">預訂中</span>}
+                      {item.status === 'Sold' && <span className="flex-shrink-0 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap ml-2">已售出</span>}
+                    </div>
                     <div className="text-sm text-[#9E9081] font-medium">{item.price === 0 || item.type === 'gift' ? '贈送' : `NT$ ${item.price}`}</div>
                     <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
                       <span>{item.views || 0} 次瀏覽</span> · <span>{item.date}</span>
@@ -1620,14 +1639,46 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
       let invoiceData = null;
       if (newMessage.includes("雙方已達成協議！✅")) {
         // More robust parsing for Time and Location
-        const timeMatch = newMessage.match(/\*\*時間[\s\S]*?[:：]\s*([^\n\r]*)/);
-        const locationMatch = newMessage.match(/\*\*地點[\s\S]*?[:：]\s*([^\n\r]*)/);
+        // More robust parsing for Time and Location (Support both **Header** and plain Header)
+        const timeMatch = newMessage.match(/(?:\*\*|)?時間[\s\S]*?[:：]\s*([^\n\r]*)/);
+        const locationMatch = newMessage.match(/(?:\*\*|)?地點[\s\S]*?[:：]\s*([^\n\r]*)/);
         if (timeMatch || locationMatch) {
+          const dateStr = normalizeTime(timeMatch?.[1]?.trim());
+          // Parse "MM/DD HH:mm" to Date object
+          let meetingTimeDate = null;
+          if (dateStr) {
+            const parts = dateStr.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})/);
+            if (parts) {
+              const now = new Date();
+              meetingTimeDate = new Date(now.getFullYear(), parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
+            }
+          }
+
           invoiceData = {
-            meetingTime: normalizeTime(timeMatch?.[1]?.trim()),
+            meetingTime: meetingTimeDate, // Save as Date (Firestore Timestamp)
             meetingLocation: locationMatch?.[1]?.trim(),
             invoiceSentAt: new Date()
           };
+
+          // For Validation
+          // meetingTimeDate is already Date or Null.
+          const isTimeValid = invoiceData.meetingTime && !isNaN(meetingTimeDate.getTime()) && invoiceData.meetingTime.toString() !== "Invalid Date";
+
+          const leakedHeaders = ["書籍名稱", "價格", "時間", "**"];
+          const isLocationValid = invoiceData.meetingLocation && !leakedHeaders.some(h => invoiceData.meetingLocation.includes(h));
+
+          if (!isTimeValid) {
+            alert("明細資訊不完整，請填寫正確的時間格式 (例如: 1/5 8:20)");
+            return;
+          }
+          if (!isLocationValid) {
+            alert("明細資訊不完整，請填寫地點 (請勿包含其他欄位標題)");
+            return;
+          }
+        } else {
+          // Header exists but no time/loc matched?
+          alert("明細資訊不完整，找不到時間或地點");
+          return;
         }
       }
 
@@ -1644,10 +1695,10 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
     const template = `雙方已達成協議！✅
 若有綁定官方LINE系統將會通知您
 ----------------
-**時間(ex.1/5 8:20)**：
-**地點**：
-**書籍名稱**：${bookTitle}
-**價格**：NT$ ${price}`;
+時間(ex.1/5 8:20)：
+地點：
+書籍名稱：${bookTitle}
+價格：NT$ ${price}`;
     setNewMessage(template);
   };
 
@@ -1913,7 +1964,7 @@ const NotificationCenter = ({ notifications, onClose, onMarkAsRead }) => {
             >
               {!notif.isRead && <div className="absolute top-3 left-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
               <div className="text-xs text-[#756256] mb-1 leading-relaxed pl-2">{notif.content}</div>
-              <div className="text-[10px] text-gray-400 pl-2">
+              <div className="text-[12px] text-gray-400 pl-2">
                 {getRelativeTime(notif.timestamp)}
               </div>
             </div>
@@ -1923,7 +1974,7 @@ const NotificationCenter = ({ notifications, onClose, onMarkAsRead }) => {
 
       {notifications.length > 0 && (
         <div className="p-3 bg-white border-t text-center">
-          <button className="text-[10px] font-bold text-[#A58976] hover:underline">清除所有已讀</button>
+          <button className="text-[12px] font-bold text-[#A58976] hover:underline">清除所有已讀</button>
         </div>
       )}
     </div>
