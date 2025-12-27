@@ -78,6 +78,7 @@ export const bookService = {
                     sellerId: book.sellerId,
                     buyerId: currentUser.uid,
                     price: book.price,
+                    agreedPrice: book.price, // Ensure agreedPrice is set
                     status: 'Pending',
                     timestamp: new Date()
                 });

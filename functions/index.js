@@ -1,48 +1,53 @@
-const admin = require('firebase-admin');
-
-// Initialize Firebase Admin first
-if (admin.apps.length === 0) {
+// 1. 必須最先初始化 Admin SDK
+const admin = require("firebase-admin");
+if (!admin.apps.length) {
     admin.initializeApp();
-    console.log("Firebase Admin Initialized");
 }
 
-console.log("🚀 Functions loaded! GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "Present" : "Missing");
+const functions = require("firebase-functions");
 
-// Import handlers
-const authHandlers = require('./handlers/auth');
-const transactionHandlers = require('./handlers/transaction');
-const calendarHandlers = require('./handlers/calendar');
 
-// Export functions
+// 2. 統一在此處引入所有 Handlers (避免重複 require)
+const authHandlers = require("./handlers/auth");
+const transactionHandlers = require("./handlers/transaction");
+const calendarHandlers = require("./handlers/calendar");
+const reviewHandlers = require("./handlers/review");
+const lineHandlers = require("./handlers/line-bot");
+const storeHandlers = require("./handlers/store");
+const bookHandlers = require("./handlers/book");
+
+// 3. 匯出功能 (每個名稱只能出現一次)
+
+// --- Auth ---
 exports.checkSchoolEmail = authHandlers.checkSchoolEmail;
-exports.completeProfile = authHandlers.completeProfile; // Export new function
+exports.completeProfile = authHandlers.completeProfile;
+
+// --- Transactions ---
 exports.handleBookTransaction = transactionHandlers.handleBookTransaction;
-exports.onTransactionCreate = transactionHandlers.onTransactionCreate; // New Trigger
+exports.onTransactionCreate = transactionHandlers.onTransactionCreate;
 exports.onTransactionUpdate = transactionHandlers.onTransactionUpdate;
 exports.updateTransactionStatus = transactionHandlers.updateTransactionStatus;
 exports.requestReschedule = transactionHandlers.requestReschedule;
 exports.respondToReschedule = transactionHandlers.respondToReschedule;
 exports.confirmTransactionTime = transactionHandlers.confirmTransactionTime;
-exports.getExamCountdown = calendarHandlers.getExamCountdown;
 
-// Review Handlers
-const reviewHandlers = require('./handlers/review');
+// --- Calendar & Review ---
+exports.getExamCountdown = calendarHandlers.getExamCountdown;
 exports.addReview = reviewHandlers.addReview;
 exports.onReviewCreated = reviewHandlers.onReviewCreated;
 
-
-// LINE Handlers
-const lineHandlers = require('./handlers/line-bot');
+// --- LINE Bot ---
 exports.generateBindingCode = lineHandlers.generateBindingCode;
+// 注意：這裡直接使用 lineHandlers 裡的邏輯，不要在 index.js 重寫
 exports.lineWebhook = lineHandlers.lineWebhook;
 
-// Store Handlers
-const storeHandlers = require('./handlers/store');
+// --- Store & Book ---
 exports.purchaseItem = storeHandlers.purchaseItem;
 exports.dailyCheckIn = storeHandlers.dailyCheckIn;
-
-// Book Handlers
-const bookHandlers = require('./handlers/book');
 exports.deleteBook = bookHandlers.deleteBook;
 
-// Calendar Handlers (Already exported above)
+// --- Scheduler ---
+const schedulerHandlers = require("./handlers/scheduler");
+exports.checkMeetingReminders = schedulerHandlers.checkMeetingReminders;
+
+console.log("🚀 Functions loaded! GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "Present" : "Missing");

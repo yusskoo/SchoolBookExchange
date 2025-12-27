@@ -1,7 +1,19 @@
 {
+  "name": "school-book-exchange-frontend",
+  "version": "0.1.0",
+  "homepage": "https://yusskoo.github.io/SchoolBookExchange",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
   "dependencies": {
     "axios": "^1.13.2",
     "firebase-admin": "^13.6.0",
     "firebase-functions-test": "^3.4.1"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }

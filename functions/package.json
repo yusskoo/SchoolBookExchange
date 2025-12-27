@@ -16,6 +16,7 @@
   "dependencies": {
     "@google/genai": "^1.34.0",
     "@google/generative-ai": "^0.24.1",
+    "@line/bot-sdk": "^10.5.0",
     "cors": "^2.8.5",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",

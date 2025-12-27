@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [
@@ -10,8 +11,15 @@ export default defineConfig({
   build: {
     outDir: '../public',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+      },
+    },
   },
   server: {
-    port: 5000,
-  }
+    port: 5173,
+  },
+  // Base path for GitHub Pages deployment
+  base: process.env.NODE_ENV === 'production' ? '/SchoolBookExchange/' : '/',
 })

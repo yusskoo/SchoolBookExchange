@@ -30,5 +30,11 @@ export const authService = {
     // 監聽 User Profile 資料
     onProfileSnapshot(uid, callback) {
         return db.collection('users').doc(uid).onSnapshot(callback);
+    },
+
+    // 獲取 LINE 綁定碼
+    async getBindingCode() {
+        const generateBindingCode = functions.httpsCallable('generateBindingCode');
+        return generateBindingCode();
     }
 };

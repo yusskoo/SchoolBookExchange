@@ -167,9 +167,21 @@ const getRelativeTime = (timestamp) => {
 
 // 圖片優化代理 (加速外部圖片載入)
 const optimizeImage = (url, width = 150, quality = 50) => {
-  if (!url || (!url.includes('postimg.cc') && !url.includes('api.dicebear.com'))) return url;
-  // 使用 weserv.nl 進行快取與壓縮
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${width}&q=${quality}&output=webp`;
+  // Temporarily disabled optimization to debug image loading issues
+  // Return original URL for all images
+  return url;
+
+  /* Original implementation:
+  if (!url) return url;
+  // For external images (postimg.cc, dicebear), use weserv.nl for caching and compression
+  // For base64 images, return as-is
+  if (url.startsWith('data:')) return url;
+  if (url.includes('postimg.cc') || url.includes('api.dicebear.com')) {
+    return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${width}&q=${quality}&output=webp`;
+  }
+  // For other URLs, return as-is
+  return url;
+  */
 };
 
 const normalizeTime = (timeStr) => {
@@ -1230,6 +1242,17 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
     }
   };
 
+  const handleLineBind = async () => {
+    try {
+      const result = await authService.getBindingCode();
+      const code = result.data.code;
+      alert(`請將此 6 位數代碼傳送給 LINE 機器人以完成綁定：\n\n${code}\n\n(代碼 10 分鐘內有效)`);
+    } catch (e) {
+      console.error(e);
+      alert("取得綁定碼失敗: " + e.message);
+    }
+  };
+
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
 
   // --- [頁面渲染] 個人專區 (ProfilePage) ---
@@ -1259,6 +1282,10 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
           <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full text-xs font-bold text-yellow-700">
             <Coins size={14} fill="currentColor" /> {coins} 書香幣
           </div>
+
+          <button onClick={handleLineBind} className="mt-3 px-4 py-1.5 bg-[#06C755] text-white text-xs font-bold rounded-full shadow-sm hover:bg-[#05b34c] transition-colors flex items-center gap-1">
+            <MessageCircle size={14} /> 綁定 LINE 通知
+          </button>
         </div>
 
         {/* Tabs */}
@@ -1593,8 +1620,8 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
       let invoiceData = null;
       if (newMessage.includes("雙方已達成協議！✅")) {
         // More robust parsing for Time and Location
-        const timeMatch = newMessage.match(/\*\*時間\*\*：\s*(.*)/);
-        const locationMatch = newMessage.match(/\*\*地點\*\*：\s*(.*)/);
+        const timeMatch = newMessage.match(/\*\*時間[\s\S]*?[:：]\s*([^\n\r]*)/);
+        const locationMatch = newMessage.match(/\*\*地點[\s\S]*?[:：]\s*([^\n\r]*)/);
         if (timeMatch || locationMatch) {
           invoiceData = {
             meetingTime: normalizeTime(timeMatch?.[1]?.trim()),
@@ -1662,12 +1689,9 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#F9F7F5]">
-        {messages.length === 0 && (
-          <div className="text-center text-xs text-gray-400 mt-8 space-y-2">
-            <div>與雙方開始聊天吧！</div>
-            <div className="opacity-80">記得確認面交時間和地點<br />決定好由賣家開立明細</div>
-          </div>
-        )}
+        <div className="text-center text-xs text-gray-400 mt-4 mb-4 space-y-2">
+          <div className="opacity-80">記得確認面交時間和地點<br />決定好由賣家開立明細</div>
+        </div>
         {messages.map((msg, index) => {
           const isMe = msg.senderId === currentUser.uid;
           const msgDate = msg.timestamp?.toDate ? msg.timestamp.toDate() : new Date(msg.timestamp);

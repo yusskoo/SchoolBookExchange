@@ -22,7 +22,7 @@ const functions = firebase.functions();
 const hostname = window.location.hostname;
 if (hostname === "localhost" || hostname === "127.0.0.1") {
     console.log("Using Firebase Emulators");
-    db.useEmulator("127.0.0.1", 8085);
+    db.useEmulator("127.0.0.1", 8088);
     auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true }); // Disable warning for HTTP
     functions.useEmulator("127.0.0.1", 5001);
 }
