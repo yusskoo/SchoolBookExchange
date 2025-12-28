@@ -1,10 +1,44 @@
+/**
+ * ============================================
+ * 書籍交易處理模組 (Transaction Handler)
+ * ============================================
+ * 
+ * 主要功能:
+ * 1. 處理書籍預訂和交易建立
+ * 2. 監聽交易狀態變化並執行獎懲邏輯
+ * 3. 管理交易時間協調（確認、改期）
+ * 4. 發送交易相關通知（LINE、Email）
+ * 5. 同步書籍狀態（Available、Reserved、Sold、Suspended）
+ */
+
+// TODO: 將交易邏輯拆分成更小的模組（如 transaction-validator.js, transaction-notifier.js）
+// TODO: 實作交易快取機制，減少 Firestore 讀取次數
+// TODO: 加入交易分析和報表功能
+
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { FieldValue } = require("firebase-admin/firestore");
 const cors = require("cors")({ origin: true });
 const emailService = require("../services/email-service");
 
-// 2. 處理書籍預訂 (HTTPS API)
+// ============================================
+// 1. 處理書籍預訂 (HTTPS API)
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 驗證請求參數（bookId, buyerId, agreedPrice）
+ * 2. 在 Firestore Transaction 中執行以下操作：
+ *    a. 檢查書籍是否存在且可預訂
+ *    b. 如果已被預訂，檢查是否為交易參與者（允許重新進入）
+ *    c. 取得賣家資訊並檢查 LINE 通知設定
+ *    d. 更新書籍狀態為 Reserved
+ *    e. 建立交易紀錄
+ * 3. 回傳交易 ID
+ * 
+ * TODO: 加入交易金額驗證邏輯（防止惡意低價）
+ * TODO: 實作交易鎖定機制防止併發問題
+ * TODO: 加入賣家忙碌狀態檢查（每次只能進行一筆交易）
+ */
 exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     console.log("收到交易請求內容:", req.body);

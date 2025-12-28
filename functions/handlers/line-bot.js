@@ -1,19 +1,60 @@
+/**
+ * ============================================
+ * LINE Bot 整合模組 (LINE Bot Handler)
+ * ============================================
+ * 
+ * 主要功能:
+ * 1. LINE 帳號綁定（產生綁定碼、處理綁定）
+ * 2. LINE Webhook 處理（文字訊息、Postback 事件）
+ * 3. 自動回覆機器人（查詢交易、功能說明）
+ * 4. 交易明細通知（Flex Message）
+ * 5. 面交結果回報（成功/失敗）
+ * 
+ * 事件類型:
+ * - message.text: 文字訊息（綁定碼、自動回覆）
+ * - postback: 互動按鈕回應（確認成功/失敗）
+ */
+
+// TODO: 實作 LINE Login 整合（直接登入）
+// TODO: 加入更多自動回覆功能（如查詢帳戶資訊）
+// TODO: 實作 Rich Menu 功能
+// TODO: 加入通知偏好設定（使用者可選擇接收哪些通知）
+
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const lineService = require("../services/line-service");
 
-// 1. Generate Binding Code (Callable)
+// ============================================
+// 1. 產生 LINE 綁定碼 (Callable Function)
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 驗證使用者已登入
+ * 2. 產生 6 位數隨機綁定碼（100000-999999）
+ * 3. 設定 10 分鐘有效期限
+ * 4. 儲存至 line_codes collection
+ * 5. 回傳綁定碼和過期時間給前端
+ * 
+ * @returns {Promise} { success: true, code: "123456", expiresAt: Timestamp }
+ * 
+ * TODO: 實作綁定碼重複檢查（確保唯一性）
+ * TODO: 加入綁定碼使用次數限制
+ * TODO: 記錄綁定碼產生歷史
+ */
 exports.generateBindingCode = functions.https.onCall(async (data, context) => {
+  // Pseudocode: 驗證登入狀態
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
 
   const uid = context.auth.uid;
   const db = admin.firestore();
 
-  // Generate 6 digit code
+  // Pseudocode: 產生 6 位數隨機碼
   const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+  // Pseudocode: 設定 10 分鐘有效期
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+  // Pseudocode: 儲存綁定碼至 Firestore
   await db.collection("line_codes").doc(code).set({
     uid: uid,
     expiresAt: expiresAt,
@@ -25,9 +66,29 @@ exports.generateBindingCode = functions.https.onCall(async (data, context) => {
 
 const cors = require("cors")({ origin: true });
 
-// 2. Enhanced LINE Webhook (自動回覆機器人 + Postback 處理)
+// ============================================
+// 2. LINE Webhook 主處理程式
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 接收 LINE Webhook 事件
+ * 2. 處理不同類型的事件：
+ *    a. message.text: 文字訊息（綁定碼、自動回覆）
+ *    b. postback: 互動按鈕回應（面交結果）
+ * 3. 回傳 200 OK 給 LINE
+ * 
+ * 特殊處理:
+ * - ngrok 瀏覽器警告跳過（免費版）
+ * - 空事件列表處理（驗證請求）
+ * - 待處理輸入請求（如失敗原因）
+ * 
+ * TODO: 加入更多事件類型支援（follow, unfollow）
+ * TODO: 實作 Webhook 簽章驗證（安全性）
+ * TODO: 加入錯誤重試機制
+ * TODO: 實作訊息佇列處理（高流量時）
+ */
 exports.lineWebhook = functions.https.onRequest(async (req, res) => {
-  // Skip ngrok browser warning for free tier
+  // 跳過 ngrok 瀏覽器警告
   res.set("ngrok-skip-browser-warning", "true");
 
   return cors(req, res, async () => {
@@ -36,26 +97,30 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
 
     console.log("收到 LINE 事件:", JSON.stringify(req.body));
 
-    // If no events (e.g. verification check), return 200 OK immediately
+    // Pseudocode: 處理空事件（驗證請求）
     if (events.length === 0) {
       return res.status(200).send("OK");
     }
 
+    // Pseudocode: 遍歷處理每個事件
     for (const event of events) {
       const lineUserId = event.source.userId;
 
+      // ========================================
       // A. 處理文字訊息（綁定碼 + 自動回覆）
+      // ========================================
       if (event.type === "message" && event.message.type === "text") {
         const text = event.message.text.trim();
         const replyToken = event.replyToken;
 
-        // 先檢查是否有待處理的輸入請求（如失敗原因）
+        // Pseudocode: 檢查是否有待處理的輸入請求
+        // 用於多步驟對話（如輸入失敗原因）
         const pendingInputDoc = await db.collection("pending_inputs").doc(lineUserId).get();
         if (pendingInputDoc.exists) {
           const inputData = pendingInputDoc.data();
 
           if (inputData.type === "fail_reason") {
-            // 處理面交失敗原因
+            // Pseudocode: 處理面交失敗原因輸入
             const transRef = db.collection("transactions").doc(inputData.transactionId);
             await transRef.update({
               status: "Failed",
@@ -69,7 +134,7 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
               "系統已收到您的回報，管理員將會跟進處理。",
             );
 
-            // 刪除待處理請求
+            // Pseudocode: 刪除待處理請求
             await db.collection("pending_inputs").doc(lineUserId).delete();
             continue;
           }
@@ -124,15 +189,32 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
   });
 });
 
+// ============================================
 // 自動回覆邏輯
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 將文字轉為小寫以便比對
+ * 2. 查詢使用者是否已綁定 LINE
+ * 3. 如果未綁定，提示綁定流程
+ * 4. 如果已綁定，根據關鍵字回覆：
+ *    - 「查詢/訂單/交易」→ 顯示交易列表
+ *    - 「幫助/功能/help」→ 顯示功能說明
+ *    - 其他 → 顯示功能選單（Buttons Template）
+ * 
+ * TODO: 加入更多關鍵字（如「書籍」、「積分」）
+ * TODO: 實作自然語言理解（NLU）
+ * TODO: 加入常見問題自動回答
+ * TODO: 記錄使用者互動數據供分析
+ */
 async function handleAutoReply(replyToken, text, lineUserId, db) {
   const textLower = text.toLowerCase();
 
-  // 查詢使用者資料
+  // Pseudocode: 查詢使用者資料
   const userQuery = await db.collection("users").where("lineUserId", "==", lineUserId).limit(1).get();
 
   if (userQuery.empty) {
-    // 未綁定帳號
+    // Pseudocode: 未綁定帳號，提示綁定流程
     await lineService.replyMessage(replyToken,
       "👋 歡迎使用校園二手書循環平台！\n\n" +
       "請先在網頁平台登入後，於個人專區取得綁定碼，然後在此輸入 6 位數綁定碼以連結您的帳戶。",
@@ -143,7 +225,7 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
   const userId = userQuery.docs[0].id;
   const userData = userQuery.docs[0].data();
 
-  // 關鍵字回覆
+  // Pseudocode: 根據關鍵字回覆
   if (textLower.includes("查詢") || textLower.includes("訂單") || textLower.includes("交易")) {
     await replyTransactionList(replyToken, userId, db);
   } else if (textLower.includes("幫助") || textLower.includes("功能") || textLower.includes("help")) {
@@ -155,7 +237,7 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
       "• 收到明細通知後，可直接點擊按鈕回報面交結果",
     );
   } else {
-    // 預設回覆 + 選單
+    // Pseudocode: 預設回覆 + 互動選單
     await lineService.replyMessage(replyToken, [
       {
         type: "text",
@@ -182,7 +264,7 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
             {
               type: "uri",
               label: "前往平台",
-              uri: "https://your-platform-url.com",
+              uri: "https://your-platform-url.com", // TODO: 改為環境變數
             },
           ],
         },
@@ -191,15 +273,35 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
   }
 }
 
+// ============================================
 // 回覆交易列表
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 查詢使用者作為買家的進行中交易（Pending）
+ * 2. 查詢使用者作為賣家的進行中交易（Pending）
+ * 3. 合併兩個列表，限制最多 5 筆
+ * 4. 如果沒有交易，回覆提示訊息
+ * 5. 如果有交易，格式化並回覆交易資訊：
+ *    - 角色（買家/賣家）
+ *    - 書名
+ *    - 價格
+ *    - 面交時間
+ * 
+ * TODO: 使用 Flex Message 美化交易列表顯示
+ * TODO: 加入交易狀態篩選（可查看已完成的交易）
+ * TODO: 加入分頁功能（超過 5 筆時）
+ * TODO: 加入快速操作按鈕（如查看詳情、聯絡對方）
+ */
 async function replyTransactionList(replyToken, userId, db) {
-  // 查詢進行中的交易
+  // Pseudocode: 查詢買家交易
   const buyerTrans = await db.collection("transactions")
     .where("buyerId", "==", userId)
     .where("status", "==", "Pending")
     .limit(5)
     .get();
 
+  // Pseudocode: 查詢賣家交易
   const sellerTrans = await db.collection("transactions")
     .where("sellerId", "==", userId)
     .where("status", "==", "Pending")
@@ -208,11 +310,13 @@ async function replyTransactionList(replyToken, userId, db) {
 
   const allTrans = [...buyerTrans.docs, ...sellerTrans.docs];
 
+  // Pseudocode: 沒有交易時的提示
   if (allTrans.length === 0) {
     await lineService.replyMessage(replyToken, "📭 目前沒有進行中的交易訂單。");
     return;
   }
 
+  // Pseudocode: 格式化交易列表訊息
   let msg = `📦 您有 ${allTrans.length} 筆進行中的交易：\n\n`;
 
   allTrans.forEach((doc, idx) => {
@@ -230,7 +334,33 @@ async function replyTransactionList(replyToken, userId, db) {
   await lineService.replyMessage(replyToken, msg);
 }
 
+// ============================================
 // 處理 Postback（面交成功/失敗）
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 解析 postback data（action, transactionId, userId）
+ * 2. 驗證必要參數是否完整
+ * 3. 根據 action 類型處理：
+ *    a. confirm_success: 標記面交成功
+ *       - 使用 Firestore Transaction 確保一致性
+ *       - 檢查是否重複點擊
+ *       - 標記該用戶已確認
+ *       - 如果雙方都確認，更新交易狀態為 Completed
+ *    b. report_fail: 標記面交失敗
+ *       - 檢查交易狀態防止重複
+ *       - 更新交易狀態為 Failed
+ *       - 記錄失敗原因和回報者
+ *    c. input_fail_reason: 請求輸入失敗原因
+ *       - 建立待處理輸入請求
+ *       - 提示用戶輸入失敗原因
+ * 4. 回覆用戶處理結果
+ * 
+ * TODO: 加入面交照片上傳功能
+ * TODO: 實作面交延期功能（雙方同意延期）
+ * TODO: 加入自動提醒未確認的用戶
+ * TODO: 實作爭議處理流程（雙方意見不一致時）
+ */
 async function handlePostback(event, db) {
   const data = event.postback.data;
   const params = new URLSearchParams(data);
@@ -239,6 +369,7 @@ async function handlePostback(event, db) {
   const transactionId = params.get("transactionId");
   const userId = params.get("userId");
 
+  // Pseudocode: 驗證必要參數
   if (!transactionId || !userId) {
     console.error("Invalid postback data:", data);
     return;
@@ -247,31 +378,30 @@ async function handlePostback(event, db) {
   const transRef = db.collection("transactions").doc(transactionId);
 
   try {
+    // ========================================
+    // A. 面交成功確認
+    // ========================================
     if (action === "confirm_success") {
-      // 面交成功
+      // Pseudocode: 使用 Firestore Transaction 確保一致性
       await db.runTransaction(async (t) => {
         const doc = await t.get(transRef);
         if (!doc.exists) return;
 
         const trans = doc.data();
 
-        // [Fix] Prevent Double Click
+        // Pseudocode: 防止重複點擊（交易已結束）
         if (trans.status === "Completed" || trans.status === "Failed" || trans.status === "Canceled") {
-          // Transaction finalized, ignore update
-          // We can't reply from inside transaction easily without throwing, 
-          // but we can check before transaction or here.
-          // If we throw, we can catch and reply.
           throw new Error("TransFinalized");
         }
 
-        // 標記此用戶已確認
+        // Pseudocode: 標記此用戶已確認
         const confirmKey = trans.buyerId === userId ? "buyerConfirmed" : "sellerConfirmed";
         const updates = {
           [confirmKey]: true,
           [`${confirmKey}At`]: new Date(),
         };
 
-        // 檢查雙方是否都已確認
+        // Pseudocode: 檢查雙方是否都已確認
         const otherConfirmKey = trans.buyerId === userId ? "sellerConfirmed" : "buyerConfirmed";
         if (trans[otherConfirmKey] === true) {
           // 雙方都確認了，交易完成
@@ -282,14 +412,18 @@ async function handlePostback(event, db) {
         t.update(transRef, updates);
       });
 
-      // 回覆用戶
+      // Pseudocode: 回覆用戶
       const lineUserId = event.source.userId;
       await lineService.pushMessage(lineUserId,
         "✅ 已記錄面交成功！\n\n" +
         "感謝您的回報，等待對方確認後交易將自動完成。",
       );
-    } else if (action === "report_fail") {
-      // 檢查狀態防止重複點擊
+    }
+    // ========================================
+    // B. 面交失敗回報
+    // ========================================
+    else if (action === "report_fail") {
+      // Pseudocode: 檢查狀態防止重複點擊
       const currentDoc = await transRef.get();
       if (currentDoc.exists) {
         const tData = currentDoc.data();
@@ -299,7 +433,7 @@ async function handlePostback(event, db) {
         }
       }
 
-      // 面交失敗
+      // Pseudocode: 更新為失敗狀態
       await transRef.update({
         status: "Failed",
         failedBy: userId,
@@ -312,23 +446,28 @@ async function handlePostback(event, db) {
         "❌ 已記錄面交失敗。\n\n" +
         "系統已收到您的回報，管理員將會跟進處理。",
       );
-    } else if (action === "input_fail_reason") {
-      // 請用戶輸入失敗原因
+    }
+    // ========================================
+    // C. 請求輸入失敗原因
+    // ========================================
+    else if (action === "input_fail_reason") {
       const lineUserId = event.source.userId;
-      await lineService.pushMessage(lineUserId,
-        "請簡述面交失敗的原因：\n" +
-        "（例如：對方未出現、書籍與描述不符等）",
-      );
-
-      // 儲存等待輸入的狀態
+      // Pseudocode: 建立待處理輸入請求
       await db.collection("pending_inputs").doc(lineUserId).set({
         type: "fail_reason",
         transactionId: transactionId,
         userId: userId,
         timestamp: new Date(),
       });
+
+      // Pseudocode: 提示用戶輸入失敗原因
+      await lineService.pushMessage(lineUserId,
+        "請簡述面交失敗的原因：\n" +
+        "（例如：對方未出現、書籍與描述不符等）",
+      );
     }
   } catch (e) {
+    // Pseudocode: 錯誤處理
     if (e.message === "TransFinalized") {
       await lineService.replyMessage(event.replyToken, "⚠️ 此交易已結束，按鈕已失效。");
     } else {
@@ -337,12 +476,36 @@ async function handlePostback(event, db) {
   }
 }
 
+// ============================================
 // 3. 發送交易明細通知（開立明細後觸發）
-// 這個 function 會由 transaction.js 中的 Firestore trigger 呼叫
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 從交易資料中提取買賣雙方的 UID
+ * 2. 讀取買賣雙方的使用者資料
+ * 3. 檢查是否啟用 LINE 通知且有綁定 LINE
+ * 4. 建立 Flex Message 格式的交易明細
+ * 5. 分別發送給買家和賣家（如果有啟用通知）
+ * 6. 記錄發送結果
+ * 
+ * 通知內容:
+ * - 角色（買家/賣家）
+ * - 書籍名稱
+ * - 價格
+ * - 面交時間地點
+ * - 互動按鈕（面交成功/失敗）
+ * 
+ * 此函數會由 transaction.js 的 Firestore trigger 呼叫
+ * 
+ * TODO: 加入通知發送失敗重試機制
+ * TODO: 實作通知發送歷史記錄
+ * TODO: 加入通知樣板管理（可自訂樣式）
+ * TODO: 支援多語言通知
+ */
 exports.sendInvoiceNotification = async (transaction, db) => {
   const { id: transId, buyerId, sellerId, bookTitle, agreedPrice, meetingTime, meetingLocation } = transaction;
 
-  // 取得買賣雙方的 LINE User ID
+  // Pseudocode: 取得買賣雙方的使用者資料
   const buyerDoc = await db.collection("users").doc(buyerId).get();
   const sellerDoc = await db.collection("users").doc(sellerId).get();
 
@@ -351,9 +514,11 @@ exports.sendInvoiceNotification = async (transaction, db) => {
 
   const recipients = [];
 
+  // Pseudocode: 檢查買家是否啟用 LINE 通知
   if (buyerData.isLineNotifyEnabled && buyerData.lineUserId) {
     recipients.push({ lineUserId: buyerData.lineUserId, uid: buyerId, role: "買家" });
   }
+  // Pseudocode: 檢查賣家是否啟用 LINE 通知
   if (sellerData.isLineNotifyEnabled && sellerData.lineUserId) {
     recipients.push({ lineUserId: sellerData.lineUserId, uid: sellerId, role: "賣家" });
   }
@@ -363,14 +528,14 @@ exports.sendInvoiceNotification = async (transaction, db) => {
     return;
   }
 
-  // 使用 Flex Message 製作精美的明細通知
+  // Pseudocode: 使用 Flex Message 製作精美的明細通知
   const flexMessage = createInvoiceFlexMessage(
     transaction,
     buyerData.nickname || "買家",
     sellerData.nickname || "賣家",
   );
 
-  // 發送給雙方
+  // Pseudocode: 發送給雙方
   for (const recipient of recipients) {
     try {
       // 主要通知訊息

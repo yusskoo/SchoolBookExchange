@@ -1,2 +1,6 @@
 node_modules/
 *.local
+
+# Service Account Keys (敏感資訊)
+serviceAccountKey.json
+*-firebase-adminsdk-*.json

@@ -1,9 +1,37 @@
+/**
+ * ============================================
+ * 前端書籍服務 (Book Service)
+ * ============================================
+ * 
+ * 主要功能:
+ * 1. 書籍管理（上架、下架、編輯、瀏覽）
+ * 2. 交易流程（預訂、確認時間、改期、完成/取消）
+ * 3. 許願池功能（新增、瀏覽、刪除願望）
+ * 4. 通知系統（訂閱、標記已讀）
+ * 5. 簽到功能
+ */
+
+// TODO: 實作書籍搜尋和篩選功能（按類別、價格區間、狀態）
+// TODO: 加入書籍推薦算法（基於瀏覽歷史和熱門程度）
+// TODO: 實作離線快取機制
+// TODO: 將 axios 改為統一的 API 層
+
 import { db } from '../config.js';
 import axios from 'axios';
 import firebase from 'firebase/compat/app';
 
 export const bookService = {
-    // 取得書籍列表 (即時監聽)
+    /**
+     * 取得書籍列表（即時監聽）
+     * Pseudocode:
+     * - 訂閱 books collection 的即時變化
+     * - 按上架時間降序排列（最新的在前）
+     * - 當資料變化時自動觸發 callback
+     * 
+     * @param {Function} callback - 資料變化時的回調函數
+     * @param {Function} errorCallback - 錯誤處理回調
+     * @returns {Function} unsubscribe 函數
+     */
     onBooksSnapshot(callback, errorCallback) {
         return db.collection('books').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
             const books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -43,14 +71,33 @@ export const bookService = {
         const deleteBookFn = functions.httpsCallable('deleteBook');
         return deleteBookFn({ bookId });
     },
-    // 預訂書籍 (呼叫 Transaction API)
+    /**
+     * 預訂書籍（呼叫後端 Transaction API）
+     * Pseudocode:
+     * 1. 透過 HTTPS POST 呼叫 handleBookTransaction endpoint
+     * 2. 後端會在 Firestore Transaction 中執行：
+     *    a. 檢查書籍是否可預訂
+     *    b. 更新書籍狀態為 Reserved
+     *    c. 建立交易紀錄
+     *    d. 發送 LINE 通知給賣家（如果有啟用）
+     * 3. 回傳交易 ID
+     * 
+     * @param {string} bookId - 書籍 ID
+     * @param {string} buyerId - 買家 UID
+     * @param {number} price - 議定價格
+     * @param {Date} meetingTime - 建議的面交時間
+     * @returns {Promise} { success: true, transactionId: string }
+     */
     async reserveBook(bookId, buyerId, price, meetingTime) {
         try {
-            const response = await axios.post('http://127.0.0.1:5001/schoolbook-290b6/us-central1/handleBookTransaction', {
+            // 使用環境變數取得 API URL
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/schoolbook-290b6/us-central1';
+
+            const response = await axios.post(`${apiUrl}/handleBookTransaction`, {
                 bookId,
                 buyerId,
                 agreedPrice: Number(price),
-                meetingTime // Pass selected time
+                meetingTime
             });
             return response.data;
         } catch (error) {
