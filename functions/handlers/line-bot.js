@@ -64,6 +64,30 @@ exports.generateBindingCode = functions.https.onCall(async (data, context) => {
   return { success: true, code: code, expiresAt: expiresAt };
 });
 
+// ============================================
+// 1.5 解除 LINE 綁定 (Callable Function)
+// ============================================
+exports.unbindLineAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
+
+  try {
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+    const { FieldValue } = require("firebase-admin/firestore");
+
+    await db.collection("users").doc(uid).update({
+      lineUserId: FieldValue.delete(),
+      isLineNotifyEnabled: false,
+      lineBoundAt: FieldValue.delete(),
+    });
+
+    return { success: true };
+  } catch (e) {
+    console.error("Unbind Error:", e);
+    throw new functions.https.HttpsError("internal", "解除綁定失敗: " + e.message);
+  }
+});
+
 const cors = require("cors")({ origin: true });
 
 // ============================================
@@ -120,19 +144,44 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
           const inputData = pendingInputDoc.data();
 
           if (inputData.type === "fail_reason") {
-            // Pseudocode: 處理面交失敗原因輸入
+            // Pseudocode: 處理面交失敗原因並執行懲罰
             const transRef = db.collection("transactions").doc(inputData.transactionId);
-            await transRef.update({
-              status: "Failed",
-              failedBy: inputData.userId,
-              failedAt: new Date(),
-              failReason: text,
-            });
+            const transDoc = await transRef.get(); // Get fresh data
 
-            await lineService.replyMessage(replyToken,
-              "❌ 已記錄面交失敗及原因。\n\n" +
-              "系統已收到您的回報，管理員將會跟進處理。",
-            );
+            if (transDoc.exists) {
+              const trans = transDoc.data();
+              const reporterId = inputData.userId;
+              let counterpartyId = null;
+
+              // Identify Counterparty (受罰者 = 對方)
+              if (reporterId === trans.buyerId) counterpartyId = trans.sellerId;
+              else if (reporterId === trans.sellerId) counterpartyId = trans.buyerId;
+
+              // Deduct Credit Score from Counterparty (-5)
+              if (counterpartyId) {
+                const userRef = db.collection("users").doc(counterpartyId);
+                // Use runTransaction for atomic update
+                await db.runTransaction(async (t) => {
+                  const userDoc = await t.get(userRef);
+                  if (userDoc.exists) {
+                    const currentScore = userDoc.data().creditScore || 100;
+                    t.update(userRef, { creditScore: Math.max(0, currentScore - 5) });
+                  }
+                });
+                console.log(`Penalty applied to ${counterpartyId} (-5) triggered by report from ${reporterId}`);
+              }
+
+              // Update Transaction
+              await transRef.update({
+                status: "Failed",
+                failedBy: reporterId,
+                failedAt: new Date(),
+                failReason: text,
+              });
+            }
+
+            // Simplified Reply
+            await lineService.replyMessage(replyToken, "系統已收到您的回報，管理員將會盡速處理。");
 
             // Pseudocode: 刪除待處理請求
             await db.collection("pending_inputs").doc(lineUserId).delete();
@@ -143,6 +192,13 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
         // 檢查是否為 6 位數綁定碼
         if (/^\d{6}$/.test(text)) {
           try {
+            // Pseudocode: 檢查此 LINE 帳號是否已綁定其他使用者 (1:1 綁定限制)
+            const duplicateCheck = await db.collection("users").where("lineUserId", "==", lineUserId).get();
+            if (!duplicateCheck.empty) {
+              await lineService.replyMessage(replyToken, "⚠️ 此 LINE 帳號已綁定其他使用者，無法重複綁定。\n若需切換帳號，請先解除原有綁定。");
+              continue;
+            }
+
             const codeRef = db.collection("line_codes").doc(text);
             const doc = await codeRef.get();
 
@@ -407,6 +463,11 @@ async function handlePostback(event, db) {
           // 雙方都確認了，交易完成
           updates.status = "Completed";
           updates.completedAt = new Date();
+
+          // [New] 自動下架書籍
+          if (trans.bookId) {
+            t.update(db.collection('books').doc(trans.bookId), { status: 'Sold' });
+          }
         }
 
         t.update(transRef, updates);

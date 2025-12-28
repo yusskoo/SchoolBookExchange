@@ -80,6 +80,7 @@ exports.onReviewCreated = reviewHandlers.onReviewCreated;      // 監聽評論�
 // --- LINE Bot 整合 ---
 exports.generateBindingCode = lineHandlers.generateBindingCode; // 產生 LINE 綁定碼
 exports.lineWebhook = lineHandlers.lineWebhook;                 // LINE Webhook 接收訊息
+exports.unbindLineAccount = lineHandlers.unbindLineAccount;     // 解除 LINE 綁定
 
 // --- 積分商店與書籍管理 ---
 exports.purchaseItem = storeHandlers.purchaseItem;   // 購買商店道具
@@ -88,6 +89,7 @@ exports.deleteBook = bookHandlers.deleteBook;        // 刪除書籍
 
 // --- 定時排程任務 ---
 exports.checkMeetingReminders = schedulerHandlers.checkMeetingReminders; // 檢查面交提醒
+exports.debugMeetingReminders = schedulerHandlers.debugMeetingReminders; // 手動觸發 Debug 提醒
 
 // TODO: 加入健康檢查 endpoint
 // TODO: 實作 function 使用統計和效能監控

@@ -3,7 +3,7 @@ import {
   Heart, MessageCircle, Share2, Star, AlertCircle, ShoppingCart,
   User, CheckCircle, MapPin, ThumbsUp, Send, Search, Bell, Eye,
   BookOpen, Filter, ArrowRight, Menu, Home, Lock, Mail, ChevronDown, Camera,
-  Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight, ExternalLink
+  Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight, ExternalLink, StarHalf
 } from 'lucide-react';
 import { authService } from './services/auth-service';
 import { bookService } from './services/book-service';
@@ -200,6 +200,28 @@ const PriceDisplay = ({ type, price, originalPrice, large = false }) => {
   if (type === 'exchange') return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.brushwood }}><Repeat size={large ? 20 : 14} /><span>想交換</span></div>;
   if (type === 'gift' || price === 0) return <div className={`flex items-center gap-1 font-bold ${large ? 'text-2xl' : 'text-sm'}`} style={{ color: COLORS.chocolateBubble }}><Gift size={large ? 20 : 14} /><span>贈送</span></div>;
   return <div className="flex flex-col"><div className={`font-bold ${large ? 'text-3xl' : 'text-lg'}`} style={{ color: COLORS.brownWindmill }}>NT$ {price}</div>{originalPrice && <span className="text-xs line-through" style={{ color: COLORS.fossilGray }}>原價 ${originalPrice}</span>}</div>;
+};
+
+// --- [組件] 星級評分顯示 ---
+const StarRating = ({ score = 100, size = 14 }) => {
+  // Convert 0-100 to 0-5 stars (rounding to nearest 0.5)
+  // Formula: stars = Math.round(score / 10) / 2
+  const stars = Math.max(0, Math.min(5, Math.round(score / 10) / 2));
+
+  return (
+    <div className="flex items-center gap-0.5" title={`信用分數: ${score}`}>
+      {[1, 2, 3, 4, 5].map((idx) => {
+        if (stars >= idx) {
+          return <Star key={idx} size={size} fill="#fbbf24" className="text-yellow-400" />;
+        } else if (stars >= idx - 0.5) {
+          return <StarHalf key={idx} size={size} fill="#fbbf24" className="text-yellow-400" />;
+        } else {
+          return <Star key={idx} size={size} className="text-gray-200" />;
+        }
+      })}
+      <span className="ml-1 text-xs font-bold text-gray-500">{stars.toFixed(1)}</span>
+    </div>
+  );
 };
 
 const SkeletonCard = () => (
@@ -656,81 +678,307 @@ const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvat
 };
 
 // --- [頁面] 登入與註冊頁面 ---
+// --- [頁面] 登入與註冊頁面 ---
 const LoginPage = ({ onLogin }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [mode, setMode] = useState('login'); // 'login' | 'register-role' | 'register-form'
+  const [role, setRole] = useState(null); // 'teacher' | 'student'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [realName, setRealName] = useState('');
   const [studentId, setStudentId] = useState('');
 
+  const [isVerifying, setIsVerifying] = useState(false); // Email link sent?
+  const [isVerified, setIsVerified] = useState(false);   // Checked link success?
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  // 初始化檢查：是否有待處理的連結登入
+  const isProcessingLink = useRef(false);
 
-    if (isRegistering) {
-      if (!email.endsWith('@shsh.tw')) {
-        alert("僅限 @shsh.tw 校內信箱註冊！");
-        setIsLoading(false);
-        return;
+  useEffect(() => {
+    const checkLinkSignIn = async () => {
+      // 防止 StrictMode 下 useEffect 執行兩次導致連結失效
+      if (isProcessingLink.current) return;
+
+      // 簡單判斷：若網址有 apiKey 等參數，可能是 Email Link
+      if (authService.isSignInWithEmailLink(window.location.href)) {
+        isProcessingLink.current = true; // 標記為處理中
+
+        let savedEmail = window.localStorage.getItem('emailForSignIn');
+        if (!savedEmail) {
+          savedEmail = window.prompt('請再次輸入您的 Email 以完成驗證');
+        }
+
+        try {
+          setIsLoading(true);
+          await authService.signInWithLink(savedEmail, window.location.href);
+          window.localStorage.removeItem('emailForSignIn');
+
+          // 還原表單狀態
+          const savedForm = JSON.parse(window.localStorage.getItem('registrationForm')) || {};
+          if (savedForm.role) setRole(savedForm.role);
+          if (savedForm.realName) setRealName(savedForm.realName);
+          if (savedForm.studentId) setStudentId(savedForm.studentId);
+          setEmail(savedEmail);
+
+          setMode('register-form');
+          setIsVerified(true);
+          alert('信箱驗證成功！請設定您的密碼以完成註冊。');
+        } catch (error) {
+          console.error(error);
+          alert('驗證連結無效或已過期，請重新嘗試。');
+          isProcessingLink.current = false; // 失敗時重置，允許重試 (雖然連結通常已失效)
+        } finally {
+          setIsLoading(false);
+        }
       }
-      if (!realName || !studentId) {
-        alert("請填寫所有欄位（姓名、學號）");
+    };
+    checkLinkSignIn();
+  }, []);
+
+  const handleSendVerification = async () => {
+    // 驗證輸入
+    if (role === 'teacher') {
+      if (!email.endsWith('@shsh.ylc.edu.tw')) return alert('教師請使用 @shsh.ylc.edu.tw 信箱');
+      if (!realName) return alert('請填寫真實姓名');
+    } else {
+      if (!email.endsWith('@shsh.tw')) return alert('學生請使用 @shsh.tw 信箱');
+      if (!realName) return alert('請填寫真實姓名');
+
+      const emailPrefix = email.split('@')[0];
+      const validFormat = /^stu\d+$/.test(emailPrefix) || /^u\d+$/.test(emailPrefix);
+      if (!validFormat) return alert('學生信箱格式錯誤 (需 stu/u 開頭)');
+
+      const derivedId = emailPrefix.startsWith('stu') ? emailPrefix.substring(3) : emailPrefix.substring(1);
+
+      // Auto-set student ID for next steps
+      setStudentId(derivedId);
+
+      try {
+        setIsLoading(true);
+        await authService.sendVerificationLink(email);
+
+        // Update localStorage with derived ID
+        window.localStorage.setItem('emailForSignIn', email);
+        window.localStorage.setItem('registrationForm', JSON.stringify({ role, realName, studentId: derivedId }));
+
+        setIsVerifying(true);
+        setTimeout(() => {
+          alert(`驗證信已寄送至 ${email}，請至信箱點擊連結！`);
+        }, 100);
+      } catch (e) {
+        alert('寄送失敗: ' + e.message);
+      } finally {
         setIsLoading(false);
-        return;
       }
+      return;
     }
 
     try {
-      if (isRegistering) {
-        await authService.signUp(email, password);
-        try {
-          // Auto-generate nickname: First char of Real Name + "同學"
-          const generatedNickname = (realName.trim()[0] || "") + "同學";
-          await authService.completeProfile({ realName, studentId, nickname: generatedNickname });
-          alert("註冊成功！");
-        } catch (profileError) {
-          console.error("Profile completion failed", profileError);
-          alert("註冊成功，但在建立個人資料時發生錯誤，請稍後聯繫管理員。");
-        }
-        alert("系統將為您自動登入");
-        setIsRegistering(false);
-      } else {
-        await authService.login(email, password);
-      }
-      // onAuthStateChanged in App will handle redirect
-    } catch (error) {
-      alert((isRegistering ? "註冊失敗: " : "登入失敗: ") + error.message);
+      setIsLoading(true);
+      await authService.sendVerificationLink(email);
+      window.localStorage.setItem('emailForSignIn', email);
+      window.localStorage.setItem('registrationForm', JSON.stringify({ role, realName }));
+      setIsVerifying(true);
+      alert(`驗證信已寄送至 ${email}，請至信箱點擊連結！`);
+    } catch (e) {
+      alert('寄送失敗: ' + e.message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleFinalRegister = async () => {
+    if (!password || password.length < 6) return alert('請設定至少 6 位數密碼');
+
+    try {
+      setIsLoading(true);
+      // 1. 設定密碼
+      await authService.updateUserPassword(password);
+
+      // 2. 建立資料
+      const generatedNickname = (realName.trim()[0] || "") + (role === 'teacher' ? "老師" : "同學");
+      await authService.completeProfile({ realName, studentId, nickname: generatedNickname });
+
+      // 清除暫存
+      window.localStorage.removeItem('registrationForm');
+
+      alert('註冊成功！系統將自動登入');
+    } catch (e) {
+      console.error(e);
+      alert('註冊失敗，請聯繫管理員: ' + e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      await authService.login(email, password);
+    } catch (e) {
+      if (e.code === 'auth/wrong-password') {
+        alert('密碼不符，請重新輸入');
+      } else if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email') {
+        alert('找不到此帳號，請確認信箱是否正確');
+      } else {
+        alert('登入失敗: ' + e.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 渲染：角色選擇畫面
+  if (mode === 'register-role') {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ ...fontStyle, backgroundColor: COLORS.bgLight }}>
+        <div className="max-w-2xl w-full">
+          <h2 className="text-3xl font-bold text-center mb-8" style={{ color: COLORS.brownWindmill }}>請選擇您的身分</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <button
+              onClick={() => { setRole('teacher'); setMode('register-form'); }}
+              className="bg-white p-8 rounded-2xl shadow-lg border-2 border-transparent hover:border-[#A58976] transition-all flex flex-col items-center gap-4 group"
+            >
+              <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">👨‍🏫</div>
+              <h3 className="text-xl font-bold text-[#5D4037]">我是老師</h3>
+              <p className="text-gray-500 text-sm">使用 @shsh.ylc.edu.tw 註冊</p>
+            </button>
+            <button
+              onClick={() => { setRole('student'); setMode('register-form'); }}
+              className="bg-white p-8 rounded-2xl shadow-lg border-2 border-transparent hover:border-[#A58976] transition-all flex flex-col items-center gap-4 group"
+            >
+              <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">🧑‍🎓</div>
+              <h3 className="text-xl font-bold text-[#5D4037]">我是學生</h3>
+              <p className="text-gray-500 text-sm">使用 @shsh.tw 註冊</p>
+            </button>
+          </div>
+          <button onClick={() => setMode('login')} className="block mx-auto mt-8 text-gray-500 hover:underline">返回登入</button>
+        </div>
+      </div>
+    );
+  }
+
+  // 渲染：註冊表單 (依角色)
+  if (mode === 'register-form') {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ ...fontStyle, backgroundColor: COLORS.bgLight }}>
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: COLORS.whiteBucks }}>
+          <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: COLORS.brownWindmill }}>
+            {role === 'teacher' ? '教師註冊' : '學生註冊'}
+          </h2>
+
+          <div className="space-y-4">
+            {/* 1. 基本資料 */}
+            <div>
+              <label className="block text-sm font-bold ml-1 mb-1 text-[#756256]">真實姓名</label>
+              <input
+                type="text"
+                value={realName}
+                onChange={e => setRealName(e.target.value)}
+                disabled={isVerified}
+                className="w-full p-3 border rounded-xl bg-gray-50"
+                placeholder={role === 'teacher' ? "例如：陳小美" : "例如：陳大明"}
+              />
+              <p className="text-xs text-gray-400 mt-1 ml-1">網站將顯示：{realName ? realName[0] : '某'}{role === 'teacher' ? '老師' : '同學'}</p>
+            </div>
+
+            {/* 2. 信箱驗證 */}
+            <div>
+              <label className="block text-sm font-bold ml-1 mb-1 text-[#756256]">校用信箱</label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  disabled={isVerified || isVerifying}
+                  className="flex-1 p-3 border rounded-xl bg-gray-50"
+                  placeholder={role === 'teacher' ? "xxx@shsh.ylc.edu.tw" : "u/stu + 學號@shsh.tw"}
+                />
+                {!isVerified ? (
+                  <button
+                    onClick={handleSendVerification}
+                    disabled={isVerifying || isLoading}
+                    className={`px-4 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${isVerifying ? 'bg-gray-200 text-gray-500' : 'bg-[#756256] text-white hover:bg-[#5D4E44]'
+                      }`}
+                  >
+                    {isVerifying ? '已寄出' : '認證信箱'}
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-center px-3 bg-green-100 text-green-600 rounded-xl">
+                    <CheckCircle size={20} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. 設定密碼 (驗證後解鎖) */}
+            {!isVerified && (
+              <div>
+                <label className="block text-sm font-bold ml-1 mb-1 text-gray-400">設定密碼</label>
+                <input
+                  type="text"
+                  disabled
+                  className="w-full p-3 border rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed"
+                  placeholder="請先認證信箱以解鎖此欄位"
+                />
+              </div>
+            )}
+
+            {/* 3. 設定密碼 (驗證後出現) */}
+            {isVerified && (
+              <div className="animate-fade-in-up">
+                <label className="block text-sm font-bold ml-1 mb-1 text-[#756256]">設定密碼</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full p-3 border rounded-xl bg-white focus:ring-2 ring-[#A58976]"
+                  placeholder="請輸入至少 6 位數密碼"
+                />
+                <button
+                  onClick={handleFinalRegister}
+                  disabled={isLoading}
+                  className="w-full mt-6 py-3 rounded-xl bg-[#A58976] text-white font-bold hover:bg-[#8D7362] shadow-md transition-transform active:scale-95"
+                >
+                  {isLoading ? '處理中...' : '完成註冊'}
+                </button>
+              </div>
+            )}
+
+            {!isVerified && (
+              <button onClick={() => setMode('register-role')} className="w-full mt-4 text-gray-400 text-sm hover:underline">回上一步</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 渲染：預設登入頁面
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ ...fontStyle, backgroundColor: COLORS.bgLight, color: COLORS.brownWindmill }}>
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border" style={{ borderColor: COLORS.whiteBucks }}>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: COLORS.brownWindmill }}>{isRegistering ? '註冊帳號' : '歡迎回到循環平台'}</h2>
-        <p className="text-sm mb-6" style={{ color: COLORS.brushwood }}>
-          {isRegistering ? '加入我們，讓舊書重獲新生' : '讓閒置的講義，找到新的主人'}
-        </p>
-        <form onSubmit={handleSubmit} className="space-y-3 mb-4">
-          {isRegistering && (
-            <>
-              <input type="text" value={realName} onChange={e => setRealName(e.target.value)} placeholder="真實姓名 (此網站只會顯示姓氏+同學)" className="w-full p-3 border rounded-xl bg-gray-50" required />
-              <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="學號" className="w-full p-3 border rounded-xl bg-gray-50" required />
-            </>
-          )}
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (@shsh.tw)" className="w-full p-3 border rounded-xl" required />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (至少6位)" className="w-full p-3 border rounded-xl" required />
+        <h2 className="text-2xl font-bold mb-2" style={{ color: COLORS.brownWindmill }}>歡迎回到循環平台</h2>
+        <p className="text-sm mb-6" style={{ color: COLORS.brushwood }}>讓閒置的講義，找到新的主人</p>
 
-          <button type="submit" disabled={isLoading} className="w-full py-3 rounded-xl border-2 font-bold mb-3 hover:bg-gray-50 flex items-center justify-center gap-2" style={{ borderColor: COLORS.whiteBucks, color: COLORS.brownWindmill }}>
-            {isLoading ? '處理中...' : (isRegistering ? '註冊' : '登入')}
+        <form onSubmit={handleLogin} className="space-y-3 mb-6">
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="w-full p-3 border rounded-xl" required />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full p-3 border rounded-xl" required />
+          <button type="submit" disabled={isLoading} className="w-full py-3 rounded-xl border-2 font-bold hover:bg-gray-50 flex items-center justify-center gap-2" style={{ borderColor: COLORS.whiteBucks, color: COLORS.brownWindmill }}>
+            {isLoading ? '登入中...' : '登入'}
           </button>
         </form>
-        <button onClick={() => setIsRegistering(!isRegistering)} className="text-xs text-gray-400 hover:underline">
-          {isRegistering ? '已有帳號？登入' : '沒有帳號？點此註冊 (限用校內信箱)'}
-        </button>
+
+        <div className="border-t pt-4" style={{ borderColor: COLORS.whiteBucks }}>
+          <p className="text-sm text-gray-400 mb-3">還沒有帳號嗎？</p>
+          <button
+            onClick={() => setMode('register-role')}
+            className="w-full py-3 rounded-xl bg-[#756256] text-white font-bold hover:bg-[#5D4E44] shadow-md transition-transform active:scale-95"
+          >
+            註冊帳號
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -770,10 +1018,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
     <div className="min-h-screen pb-24 bg-white" style={fontStyle}>
       <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-4 py-3 bg-white/80 backdrop-blur-md border-b" style={{ borderColor: COLORS.whiteBucks }}>
         <button onClick={onBack} className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"><ChevronLeft size={20} color={COLORS.brownWindmill} /></button>
-        <div className="flex gap-3">
-          <button className="p-2 rounded-full hover:bg-gray-100"><Share2 size={20} color={COLORS.brownWindmill} /></button>
-          <button className="p-2 rounded-full hover:bg-gray-100"><Heart size={20} color={COLORS.brownWindmill} /></button>
-        </div>
+
       </nav>
 
       <div className="pt-16 pb-6 md:pt-20 md:pb-12 md:px-8 max-w-6xl mx-auto md:flex md:gap-10 md:items-start">
@@ -824,16 +1069,19 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
             <div>
               <h3 className="text-sm font-bold text-[#9E9081] mb-2">賣家資訊</h3>
               <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F9F7F5] border border-stone-100">
-                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white shadow-sm">
-                  <User size={24} className="text-gray-500" />
+                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                  {(() => {
+                    const avatarId = sellerProfile?.currentAvatarId || product.seller?.currentAvatarId || product.seller?.avatar; // Try multiple fields
+                    const avatarSrc = AVATAR_LIST.find(a => a.id === avatarId)?.src || AVATAR_LIST[0].src;
+                    return <img src={optimizeImage(avatarSrc)} className="w-full h-full object-cover" alt="Seller" />;
+                  })()}
                 </div>
                 <div>
                   <div className="font-bold text-[#756256] text-lg">
                     {sellerProfile?.nickname || product.seller?.nickname || product.seller?.name}
                   </div>
-                  <div className="text-xs text-gray-500 flex items-center gap-1">
-                    <Star size={12} fill="#fbbf24" className="text-yellow-400" />
-                    <span className="font-bold text-gray-700">{product.seller?.score || 5.0}</span>
+                  <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                    <StarRating score={sellerProfile?.creditScore || product.seller?.score || 100} />
                   </div>
                 </div>
               </div>
@@ -1261,6 +1509,17 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
     }
   };
 
+  const handleLineUnbind = async () => {
+    if (!window.confirm("確定要解除 LINE 綁定嗎？\n解除後將無法收到即時通知。")) return;
+    try {
+      await authService.unbindLineAccount();
+      alert("已解除綁定！");
+    } catch (e) {
+      console.error(e);
+      alert("解除綁定失敗: " + e.message);
+    }
+  };
+
   const currentAvatar = AVATAR_LIST.find(a => a.id === currentAvatarId) || AVATAR_LIST[0];
 
   // --- [頁面渲染] 個人專區 (ProfilePage) ---
@@ -1269,7 +1528,23 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
       <nav className="backdrop-blur-md shadow-sm border-b sticky top-0 z-50" style={{ backgroundColor: 'rgba(255,255,255,0.8)', borderColor: COLORS.whiteBucks }}>
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3"><button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100"><ArrowRight size={20} className="rotate-180 text-[#9E9081]" /></button><div className="font-bold text-lg tracking-wide">個人專區</div></div>
-          <button onClick={onLogout} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 text-red-700 border border-red-200"><LogOut size={14} /> 登出</button>
+          <div className="flex items-center gap-2">
+            {user.isLineNotifyEnabled ? (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 text-xs font-bold rounded-md border border-green-200 cursor-default">
+                  <CheckCircle size={12} /> 已綁定
+                </div>
+                <button onClick={handleLineUnbind} className="px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-100 text-gray-500 border border-gray-200 transition-colors">
+                  解除
+                </button>
+              </div>
+            ) : (
+              <button onClick={handleLineBind} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#06C755] hover:bg-[#05b34c] text-white shadow-sm transition-colors">
+                <MessageCircle size={14} /> 綁定 LINE
+              </button>
+            )}
+            <button onClick={onLogout} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 text-red-700 border border-red-200"><LogOut size={14} /> 登出</button>
+          </div>
         </div>
       </nav>
 
@@ -1285,21 +1560,12 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
             </div>
           </div>
           <h2 className="mt-4 text-xl font-bold tracking-widest" style={{ color: COLORS.brownWindmill }}>{user.nickname || user.email}</h2>
+          <div className="flex items-center justify-center mt-1 mb-2">
+            <StarRating score={user.creditScore || 100} size={16} />
+          </div>
           <p className="text-sm text-[#9E9081] mb-2">{user.email}</p>
 
-          <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full text-xs font-bold text-yellow-700">
-            <Coins size={14} fill="currentColor" /> {coins} 書香幣
-          </div>
 
-          {user.isLineNotifyEnabled ? (
-            <button disabled className="mt-3 px-4 py-1.5 bg-[#E8E3DF] text-[#756256] text-xs font-bold rounded-full shadow-sm flex items-center gap-1 cursor-default border border-[#C9C3B6]">
-              <CheckCircle size={14} className="text-[#06C755]" /> 已綁定 LINE
-            </button>
-          ) : (
-            <button onClick={handleLineBind} className="mt-3 px-4 py-1.5 bg-[#06C755] text-white text-xs font-bold rounded-full shadow-sm hover:bg-[#05b34c] transition-colors flex items-center gap-1">
-              <MessageCircle size={14} /> 綁定 LINE 通知
-            </button>
-          )}
         </div>
 
         {/* Tabs */}
@@ -1540,8 +1806,8 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
                     <div className="flex justify-between items-center mb-1">
                       <h3 className="font-bold text-[#756256] truncate">{item.title}</h3>
                       {/* Status Tags */}
-                      {item.status === 'Reserved' && <span className="flex-shrink-0 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap ml-2">預訂中</span>}
-                      {item.status === 'Sold' && <span className="flex-shrink-0 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap ml-2">已售出</span>}
+                      {item.status === 'Reserved' && <span className="flex-shrink-0 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-bold whitespace-nowrap ml-2">預訂中</span>}
+                      {item.status === 'Sold' && <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold whitespace-nowrap ml-2">已售出</span>}
                     </div>
                     <div className="text-sm text-[#9E9081] font-medium">{item.price === 0 || item.type === 'gift' ? '贈送' : `NT$ ${item.price}`}</div>
                     <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
@@ -1650,8 +1916,21 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
             const parts = dateStr.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})/);
             if (parts) {
               const now = new Date();
-              meetingTimeDate = new Date(now.getFullYear(), parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
+              let targetYear = now.getFullYear();
+              const inputMonth = parseInt(parts[1]) - 1; // 0-indexed
+
+              // Smart Rollover: If currently Dec (11) and input is Jan (0), assume next year
+              if (now.getMonth() === 11 && inputMonth === 0) {
+                targetYear += 1;
+              }
+
+              meetingTimeDate = new Date(targetYear, inputMonth, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
             }
+          }
+
+          if (meetingTimeDate && meetingTimeDate < new Date()) {
+            alert("不能選擇過去的時間");
+            return;
           }
 
           invoiceData = {
@@ -1695,7 +1974,7 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
     const template = `雙方已達成協議！✅
 若有綁定官方LINE系統將會通知您
 ----------------
-時間(ex.1/5 8:20)：
+時間(ex.1/5 15:20)：
 地點：
 書籍名稱：${bookTitle}
 價格：NT$ ${price}`;
@@ -1859,8 +2138,18 @@ const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
 };
 
 // --- ChatList Component (New) ---
+// --- ChatList Component (New) ---
 const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
   const [chats, setChats] = useState([]);
+
+  // Status Configuration
+  const STATUS_CONFIG = {
+    'Pending': { label: '洽談中', className: 'bg-gray-100 text-gray-600' },
+    'Invoiced': { label: '交易中', className: 'bg-blue-50 text-blue-600' },
+    'Completed': { label: '交易完成', className: 'bg-green-100 text-green-700' },
+    'Success': { label: '交易完成', className: 'bg-green-100 text-green-700' },
+    'Failed': { label: '交易失敗', className: 'bg-red-50 text-red-600' }
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -1915,12 +2204,12 @@ const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
                 <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm z-10" />
               )}
               <div className="font-bold text-[#756256] text-sm truncate pr-4">{chat.bookTitle}</div>
-              <div className="text-xs text-gray-500 flex justify-between mt-1">
+              <div className="text-xs text-gray-500 flex justify-between items-center mt-1">
                 {bookExists ? (
                   <>
                     <span>{chat.buyerId === currentUser.uid ? '向賣家提問' : '來自買家'}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${chat.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {chat.status === 'Pending' ? '進行中' : chat.status}
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_CONFIG[chat.status]?.className || 'bg-gray-100 text-gray-400'}`}>
+                      {STATUS_CONFIG[chat.status]?.label || chat.status}
                     </span>
                   </>
                 ) : (
@@ -1936,7 +2225,8 @@ const ChatList = ({ currentUser, onSelectChat, onClose, books }) => {
 };
 
 // --- [New] NotificationCenter Component ---
-const NotificationCenter = ({ notifications, onClose, onMarkAsRead }) => {
+// --- [New] NotificationCenter Component ---
+const NotificationCenter = ({ notifications, onClose, onMarkAsRead, onClearAll }) => {
   return (
     <div className="fixed top-16 right-4 sm:right-20 w-80 max-h-[400px] bg-white rounded-2xl shadow-2xl flex flex-col z-[60] animate-slide-up border border-stone-100 overflow-hidden">
       <div className="bg-white p-4 border-b flex justify-between items-center">
@@ -1974,7 +2264,7 @@ const NotificationCenter = ({ notifications, onClose, onMarkAsRead }) => {
 
       {notifications.length > 0 && (
         <div className="p-3 bg-white border-t text-center">
-          <button className="text-[12px] font-bold text-[#A58976] hover:underline">清除所有已讀</button>
+          <button onClick={onClearAll} className="text-[12px] font-bold text-[#A58976] hover:underline">清除所有已讀</button>
         </div>
       )}
     </div>
@@ -2062,8 +2352,6 @@ const App = () => {
       if (user) {
         // Initial user set (might be incomplete)
         setCurrentUser({ uid: user.uid, email: user.email, ...user, nickname: user.email.split('@')[0] });
-        setCurrentPage('home');
-
         // Listen to Real User Profile
         unsubProfile = authService.onProfileSnapshot(user.uid, (doc) => {
           if (doc.exists) {
@@ -2072,8 +2360,16 @@ const App = () => {
             setCoins(data.coins || 0);
             setMyAvatars(data.myAvatars || ['classic-1']);
 
+            // [Modified] Redirect logic based on profile completion
+            if (data.isProfileCompleted) {
+              setCurrentPage('home');
+            } else {
+              // Stay on login page if profile is not complete (for registration flow)
+              setCurrentPage('login');
+            }
+
             // Detect Newborn Pony Gift (if not claimed)
-            if (!data.ponyGiftClaimed) {
+            if (data.isProfileCompleted && !data.ponyGiftClaimed) {
               setShowPonyGiftModal(true);
             }
 
@@ -2091,7 +2387,9 @@ const App = () => {
                 console.error("Check-in failed", e);
               }
             };
-            checkDailyCheckIn();
+            if (data.isProfileCompleted) {
+              checkDailyCheckIn();
+            }
           }
         });
 
@@ -2265,6 +2563,15 @@ const App = () => {
     // Optional: Save to Firestore
   };
 
+  const handleClearAllNotifications = async () => {
+    if (!currentUser) return;
+    try {
+      await bookService.markAllNotificationsAsRead(currentUser.uid);
+    } catch (error) {
+      console.error("Clear all failed", error);
+    }
+  };
+
   if (!currentUser && currentPage !== 'login') return null;
 
   const renderPage = () => {
@@ -2333,13 +2640,17 @@ const App = () => {
       )}
 
       {showNotifications && (
-        <NotificationCenter
-          notifications={notifications}
-          onClose={() => setShowNotifications(false)}
-          onMarkAsRead={async (id) => {
-            await bookService.markNotificationAsRead(id);
-          }}
-        />
+        <>
+          <div className="fixed inset-0 z-[55] bg-transparent" onClick={() => setShowNotifications(false)} />
+          <NotificationCenter
+            notifications={notifications}
+            onClose={() => setShowNotifications(false)}
+            onMarkAsRead={async (id) => {
+              await bookService.markNotificationAsRead(id);
+            }}
+            onClearAll={handleClearAllNotifications}
+          />
+        </>
       )}
 
       {/* Persistent Chat Button */}
@@ -2355,15 +2666,18 @@ const App = () => {
             )}
           </button>
           {showChatList && (
-            <ChatList
-              currentUser={currentUser}
-              books={books}
-              onSelectChat={(chat) => {
-                setActiveChat(chat);
-                setShowChatList(false);
-              }}
-              onClose={() => setShowChatList(false)}
-            />
+            <>
+              <div className="fixed inset-0 z-[45] bg-transparent" onClick={() => setShowChatList(false)} />
+              <ChatList
+                currentUser={currentUser}
+                books={books}
+                onSelectChat={(chat) => {
+                  setActiveChat(chat);
+                  setShowChatList(false);
+                }}
+                onClose={() => setShowChatList(false)}
+              />
+            </>
           )}
         </>
       )}

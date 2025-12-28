@@ -194,7 +194,36 @@ exports.onTransactionUpdate = functions.firestore
       // ... (Existing Invoice Logic)
       console.log("🧾 Invoice detected for transaction:", context.params.transactionId);
 
-      // 呼叫 LINE bot handler 發送明細通知
+      // A. 發送站內通知 (In-App)
+      const notifContent = "交易已建立！賣家已開立明細，請確認內容並準備面交。";
+      const notifBatch = db.batch();
+
+      const buyerNotifRef = db.collection('notifications').doc();
+      notifBatch.set(buyerNotifRef, {
+        userId: buyerId,
+        content: notifContent,
+        type: 'system',
+        isRead: false,
+        timestamp: new Date()
+      });
+
+      const sellerNotifRef = db.collection('notifications').doc();
+      notifBatch.set(sellerNotifRef, {
+        userId: sellerId,
+        content: notifContent,
+        type: 'system',
+        isRead: false,
+        timestamp: new Date()
+      });
+
+      try {
+        await notifBatch.commit();
+        console.log("✅ In-App Notification sent for Invoice");
+      } catch (e) {
+        console.error("❌ Failed to send In-App Notification:", e);
+      }
+
+      // B. 呼叫 LINE bot handler 發送明細通知
       const lineBotHandlers = require("./line-bot");
       try {
         await lineBotHandlers.sendInvoiceNotification({

@@ -240,6 +240,22 @@ export const bookService = {
             isRead: true
         });
     },
+    // 標記所有通知為已讀
+    async markAllNotificationsAsRead(userId) {
+        const batch = db.batch();
+        const snapshot = await db.collection('notifications')
+            .where('userId', '==', userId)
+            .where('isRead', '==', false)
+            .get();
+
+        if (snapshot.empty) return;
+
+        snapshot.forEach(doc => {
+            batch.update(doc.ref, { isRead: true });
+        });
+
+        return batch.commit();
+    },
     // 新增通知 (內部調用)
     async addNotification({ userId, content, type = 'system' }) {
         return db.collection('notifications').add({

@@ -60,6 +60,40 @@ export const authService = {
     },
 
     /**
+     * 發送認證連結 (取代原有的 signUp)
+     */
+    async sendVerificationLink(email) {
+        // 設定連結點擊後導回的網址 (即當前頁面)
+        const actionCodeSettings = {
+            url: window.location.href, // 重定向回目前頁面
+            handleCodeInApp: true,
+        };
+        return auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    },
+
+    /**
+     * 檢查網址是否為登入連結
+     */
+    isSignInWithEmailLink(url) {
+        return auth.isSignInWithEmailLink(url);
+    },
+
+    /**
+     * 使用連結登入
+     */
+    async signInWithLink(email, url) {
+        return auth.signInWithEmailLink(email, url);
+    },
+
+    /**
+     * 更新使用者密碼 (用於連結登入後的密碼設定)
+     */
+    async updateUserPassword(password) {
+        if (!auth.currentUser) throw new Error("無使用者登入");
+        return auth.currentUser.updatePassword(password);
+    },
+
+    /**
      * 實名認證（後端 Callable Function）
      * Pseudocode:
      * - 呼叫後端 completeProfile function
@@ -102,5 +136,13 @@ export const authService = {
     async getBindingCode() {
         const generateBindingCode = functions.httpsCallable('generateBindingCode');
         return generateBindingCode();
+    },
+
+    /**
+     * 解除 LINE 帳號綁定
+     */
+    async unbindLineAccount() {
+        const unbindLineAccount = functions.httpsCallable('unbindLineAccount');
+        return unbindLineAccount();
     }
 };

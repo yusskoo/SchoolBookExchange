@@ -27,24 +27,23 @@ const db = admin.firestore();
 // ============================================
 const schools = [
     {
-        id: 'shsh',
-        domain: 'shsh.ylc.edu.tw',
-        name: '正心高中',
+        id: 'shsh-student',
+        domain: 'shsh.tw',
+        name: '正心高中（學生）',
         fullName: '天主教私立正心高級中學',
         enabled: true,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     },
-    // TODO: 新增其他學校
-    // {
-    //   id: 'example',
-    //   domain: 'example.edu.tw',
-    //   name: '範例學校',
-    //   fullName: '範例中學',
-    //   enabled: true,
-    //   createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    //   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    // },
+    {
+        id: 'shsh-teacher',
+        domain: 'shsh.ylc.edu.tw',
+        name: '正心高中（教師）',
+        fullName: '天主教私立正心高級中學',
+        enabled: true,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
 ];
 
 // ============================================
