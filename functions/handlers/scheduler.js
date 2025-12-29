@@ -53,26 +53,69 @@ const runMeetingCheck = async () => {
     console.log("⏰ Starting Check Meeting Reminders (Logic)...");
 
     try {
-        // Step 1: 查詢需要提醒的交易
         const { Timestamp } = require("firebase-admin/firestore");
         const now = Timestamp.now();
+        const oneDayLater = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const dayLaterTs = Timestamp.fromDate(oneDayLater);
 
-        const snapshot = await db.collection("transactions")
+        let count = 0;
+
+        // ==========================================
+        // Part A: 24h Pre-Meeting Reminder (NEW)
+        // ==========================================
+        // Logic: meetingTime > now AND meetingTime <= now + 24h
+        // Note: Firestore doesn't support multiple range filters on different fields easily if not indexed, 
+        // but here it's same field 'meetingTime'.
+        // We look for: Pending/Invoiced, meetingTime <= 24h from now, is24hReminderSent != true
+
+        const preSnap = await db.collection("transactions")
+            .where("status", "in", ["Pending", "Invoiced"])
+            .where("meetingTime", ">", now)
+            .where("meetingTime", "<=", dayLaterTs)
+            .get();
+
+        for (const doc of preSnap.docs) {
+            const data = doc.data();
+            if (data.is24hReminderSent) continue;
+            if (!data.meetingTime) continue;
+
+            console.log(`[24h Reminder] Processing ${doc.id}`);
+
+            const meetingTimeStr = new Date(data.meetingTime.toDate()).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
+            const location = data.meetingLocation || "未設定地點";
+
+            const msgContent = `⏰ 溫馨提醒：距離您的面交時間不到 24 小時囉！請記得準時赴約。\n\n時間：${meetingTimeStr}\n地點：${location}`;
+            const notifContent = `⏰ 面交提醒：您有一筆交易即將在 24 小時內進行，別忘記囉！`;
+
+            // 1. Send LINE & In-App to Seller
+            await sendReminderToUser(db, data.sellerId, msgContent, notifContent);
+
+            // 2. Send LINE & In-App to Buyer
+            await sendReminderToUser(db, data.buyerId, msgContent, notifContent);
+
+            // 3. Mark as sent
+            await doc.ref.update({ is24hReminderSent: true });
+            count++;
+        }
+
+        // ==========================================
+        // Part B: Post-Meeting Nudge (Existing)
+        // ==========================================
+        const postSnap = await db.collection("transactions")
             .where("status", "in", ["Pending", "Invoiced"])
             .where("meetingTime", "<=", now)
             .get();
 
-        let count = 0; // 成功發送提醒的計數
-
-        // Step 2: 處理每筆交易
-        for (const doc of snapshot.docs) {
+        for (const doc of postSnap.docs) {
             const data = doc.data();
 
             if (data.isMeetingNudgeSent) continue;
             if (!data.meetingTime) continue;
+            // Only send nudge if it's reasonably recent (e.g. within 3 days)? 
+            // For now, keep existing logic but ensure we check field exists
             if (!data.buyerId || !data.sellerId) continue;
 
-            console.log(`Processing Nudge for transaction ${doc.id}`);
+            console.log(`[Post-Meeting Nudge] Processing ${doc.id}`);
 
             // Step 3: 建立互動式 LINE 訊息
             const message = {
@@ -88,36 +131,17 @@ const runMeetingCheck = async () => {
                 },
             };
 
-            // Step 4: 發送訊息給賣家
-            const sellerDoc = await db.collection("users").doc(data.sellerId).get();
-            if (sellerDoc.exists && sellerDoc.data().lineUserId && sellerDoc.data().isLineNotifyEnabled) {
-                const sellerMsg = JSON.parse(JSON.stringify(message));
-                sellerMsg.template.actions[0].data += `&userId=${data.sellerId}`;
-                sellerMsg.template.actions[1].data += `&userId=${data.sellerId}`;
-                await lineService.pushMessage(sellerDoc.data().lineUserId, sellerMsg);
-                console.log(`Sent reminder to seller ${data.sellerId}`);
-            } else {
-                console.log(`Seller ${data.sellerId} not notified (No LINE/Disabled)`);
-            }
-
-            // Step 5: 發送訊息給買家
-            const buyerDoc = await db.collection("users").doc(data.buyerId).get();
-            if (buyerDoc.exists && buyerDoc.data().lineUserId && buyerDoc.data().isLineNotifyEnabled) {
-                const buyerMsg = JSON.parse(JSON.stringify(message));
-                buyerMsg.template.actions[0].data += `&userId=${data.buyerId}`;
-                buyerMsg.template.actions[1].data += `&userId=${data.buyerId}`;
-                await lineService.pushMessage(buyerDoc.data().lineUserId, buyerMsg);
-                console.log(`Sent reminder to buyer ${data.buyerId}`);
-            } else {
-                console.log(`Buyer ${data.buyerId} not notified (No LINE/Disabled)`);
-            }
+            // Send to Seller
+            await sendLineMessage(db, data.sellerId, JSON.parse(JSON.stringify(message)), data.sellerId);
+            // Send to Buyer
+            await sendLineMessage(db, data.buyerId, JSON.parse(JSON.stringify(message)), data.buyerId);
 
             // Step 6: 標記為已發送提醒
             await doc.ref.update({ isMeetingNudgeSent: true });
             count++;
         }
 
-        const result = `Check Completed. Found ${snapshot.size} candidates. Reminded ${count}.`;
+        const result = `Check Completed. Sent ${count} reminders/nudges.`;
         console.log(result);
         return result;
     } catch (e) {
@@ -141,3 +165,58 @@ exports.debugMeetingReminders = functions.https.onRequest(async (req, res) => {
         res.status(500).send(e.message);
     }
 });
+
+// Helpers
+async function sendReminderToUser(db, userId, lineText, inAppContent) {
+    if (!userId) return;
+
+    // 1. In-App Notification
+    try {
+        await db.collection("notifications").add({
+            userId,
+            content: inAppContent,
+            type: "system",
+            isRead: false,
+            timestamp: new Date()
+        });
+    } catch (e) {
+        console.error(`Failed to create in-app notif for ${userId}`, e);
+    }
+
+    // 2. LINE Notification
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (userDoc.exists) {
+        const userData = userDoc.data();
+        if (userData.lineUserId && userData.isLineNotifyEnabled) {
+            try {
+                await lineService.pushMessage(userData.lineUserId, lineText);
+                console.log(`Sent LINE reminder to ${userId}`);
+            } catch (e) {
+                console.error(`Failed to send LINE reminder to ${userId}`, e);
+            }
+        }
+    }
+}
+
+async function sendLineMessage(db, userId, messageObj, actionUserId) {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (userDoc.exists) {
+        const userData = userDoc.data();
+        if (userData.lineUserId && userData.isLineNotifyEnabled) {
+            // Inject userId into action data if needed (for confirm template)
+            if (messageObj.template && messageObj.template.actions) {
+                messageObj.template.actions.forEach(action => {
+                    if (action.data && !action.data.includes("userId=")) {
+                        action.data += `&userId=${actionUserId}`;
+                    }
+                });
+            }
+            try {
+                await lineService.pushMessage(userData.lineUserId, messageObj);
+                console.log(`Sent LINE message to ${userId}`);
+            } catch (e) {
+                console.error(`Failed to send LINE message to ${userId}`, e);
+            }
+        }
+    }
+}

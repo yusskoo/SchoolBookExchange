@@ -1,0 +1,8 @@
+?? Starting Verification for 24h Reminder...
+Creating transaction trans_1767017600104 with meeting time: 2025-12-30T13:13:20.104Z
+??Transaction created.
+Calling http://localhost:5001/schoolbook-290b6/us-central1/debugMeetingReminders...
+Response: Check Completed. Sent 2 reminders/nudges.
+?? Verification PASSED: is24hReminderSent is TRUE
+?? Notification check PASSED: Found 1 notifications for buyer.
+ -  ???Ｖ漱??嚗??蝑漱?撠 24 撠??折脰?嚗敹???
