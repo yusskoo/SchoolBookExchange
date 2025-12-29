@@ -149,6 +149,17 @@ const INITIAL_NOTIFICATIONS = [
   { id: 3, type: 'system', content: '歡迎來到 SchoolBook Exchange！', time: '1天前', isRead: true }
 ];
 
+const GUEST_USER = {
+  uid: 'guest',
+  email: 'guest@example.com',
+  nickname: '訪客',
+  isGuest: true,
+  photoURL: null, // No avatar for guest
+  coins: 0,
+  myAvatars: [],
+  currentAvatarId: 'classic-1' // Default
+};
+
 
 // --- Helper Functions ---
 const getRelativeTime = (timestamp) => {
@@ -601,7 +612,18 @@ const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvat
             </div>
           );
         })}
-        <button onClick={() => setIsModalOpen(true)} className="w-full py-2 mt-2 text-xs font-bold text-[#9E9081] border border-dashed hover:bg-[#F9F7F5] rounded-lg transition-colors flex items-center justify-center gap-1" style={{ borderColor: COLORS.fossilGray }}><Plus size={14} /> 我也想許願</button>
+        <button
+          onClick={() => {
+            if (currentUser?.isGuest) {
+              alert("訪客無法許願，請先登入！");
+              return;
+            }
+            setIsModalOpen(true);
+          }}
+          className="w-full py-2 mt-2 text-xs font-bold text-[#9E9081] border border-dashed hover:bg-[#F9F7F5] rounded-lg transition-colors flex items-center justify-center gap-1" style={{ borderColor: COLORS.fossilGray }}
+        >
+          <Plus size={14} /> 我也想許願
+        </button>
       </div>
 
       {/* Image Preview Modal */}
@@ -679,7 +701,7 @@ const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvat
 
 // --- [頁面] 登入與註冊頁面 ---
 // --- [頁面] 登入與註冊頁面 ---
-const LoginPage = ({ onLogin }) => {
+const LoginPage = ({ onLogin, onGuestLogin }) => {
   const [mode, setMode] = useState('login'); // 'login' | 'register-role' | 'register-form'
   const [role, setRole] = useState(null); // 'teacher' | 'student'
   const [email, setEmail] = useState('');
@@ -970,13 +992,21 @@ const LoginPage = ({ onLogin }) => {
           </button>
         </form>
 
+
         <div className="border-t pt-4" style={{ borderColor: COLORS.whiteBucks }}>
           <p className="text-sm text-gray-400 mb-3">還沒有帳號嗎？</p>
           <button
             onClick={() => setMode('register-role')}
-            className="w-full py-3 rounded-xl bg-[#756256] text-white font-bold hover:bg-[#5D4E44] shadow-md transition-transform active:scale-95"
+            className="w-full py-3 rounded-xl bg-[#756256] text-white font-bold hover:bg-[#5D4E44] shadow-md transition-transform active:scale-95 mb-3"
           >
             註冊帳號
+          </button>
+
+          <button
+            onClick={onGuestLogin}
+            className="w-full py-2 rounded-xl text-[#9E9081] font-bold hover:bg-gray-50 text-sm transition-colors flex items-center justify-center gap-1"
+          >
+            <span className="opacity-70">我想四處閒晃一下</span> <ArrowRight size={14} />
           </button>
         </div>
       </div>
@@ -1090,8 +1120,17 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
             {/* Desktop Contact Button */}
             {!isOwner && (
               <div className="hidden md:block pt-4">
-                <button onClick={onContact} className="w-full py-4 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-lg">
-                  <MessageCircle size={20} /> 聯絡賣家 / 預訂
+                <button
+                  onClick={() => {
+                    if (currentUser?.isGuest) {
+                      alert("請先登入以聯絡賣家！");
+                      return;
+                    }
+                    onContact();
+                  }}
+                  className={`w-full py-4 ${currentUser?.isGuest ? 'bg-gray-400 hover:bg-gray-500' : 'bg-[#756256] hover:bg-[#5D4E44]'} text-white rounded-xl font-bold shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-lg`}
+                >
+                  <MessageCircle size={20} /> {currentUser?.isGuest ? '登入後聯絡賣家' : '聯絡賣家 / 預訂'}
                 </button>
               </div>
             )}
@@ -1102,8 +1141,17 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
       {/* Mobile Sticky Bottom Bar */}
       {!isOwner && (
         <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t safe-area-bottom flex gap-3 md:hidden z-40" style={{ borderColor: COLORS.whiteBucks }}>
-          <button onClick={onContact} className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2">
-            <MessageCircle size={18} /> 聯絡賣家
+          <button
+            onClick={() => {
+              if (currentUser?.isGuest) {
+                alert("請先登入以聯絡賣家！");
+                return;
+              }
+              onContact();
+            }}
+            className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2"
+          >
+            <MessageCircle size={18} /> {currentUser?.isGuest ? '登入後聯絡賣家' : '聯絡賣家'}
           </button>
         </div>
       )}
@@ -1112,7 +1160,7 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
 };
 
 // --- [頁面] 主頁面 (包含橫幅、精選、書籍清單) ---
-const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown, onToggleNotifications, hasUnreadNotifications }) => {
+const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown, onToggleNotifications, hasUnreadNotifications, onLogout }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
@@ -1190,7 +1238,16 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
             <div className="flex items-center gap-3">
               <button onClick={handleResetHome} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Home size={20} /></button>
               <button onClick={onToggleNotifications} className="relative p-2 hover:bg-white/10 rounded-full transition-colors"><Bell size={20} />{hasUnreadNotifications && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />}</button>
-              <button onClick={() => onNavigate('profile')} className="flex items-center gap-2 hover:bg-white/20 pl-1 pr-3 py-1 rounded-full transition-all border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-white/20"><img src={optimizeImage(currentAvatar.src, 100, 50)} alt="avatar" className="w-full h-full object-cover" /></div><span className="hidden sm:inline text-sm font-medium tracking-wide">{user.nickname || user.email}</span></button>
+              {user.isGuest ? (
+                <button
+                  onClick={onLogout}
+                  className="px-4 py-1.5 rounded-full bg-white text-[#756256] text-sm font-bold shadow-sm hover:bg-gray-100 transition-colors"
+                >
+                  登入 / 註冊
+                </button>
+              ) : (
+                <button onClick={() => onNavigate('profile')} className="flex items-center gap-2 hover:bg-white/20 pl-1 pr-3 py-1 rounded-full transition-all border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-white/20"><img src={optimizeImage(currentAvatar.src, 100, 50)} alt="avatar" className="w-full h-full object-cover" /></div><span className="hidden sm:inline text-sm font-medium tracking-wide">{user.nickname || user.email}</span></button>
+              )}
             </div>
           </div>
           <div className="max-w-3xl mx-auto mt-2">
@@ -2393,19 +2450,6 @@ const App = () => {
           }
         });
 
-        // Fetch books (Global)
-        unsubBooks = bookService.onBooksSnapshot((books) => {
-          setBooks(books);
-          setIsLoading(false);
-        }, (error) => {
-          console.error("Global books fetch failed:", error);
-          setIsLoading(false);
-        });
-
-        // Fetch Wishes (Global)
-        unsubWishes = bookService.onWishesSnapshot((data) => {
-          setWishes(data);
-        });
 
         // Listen to Notifications
         unsubNotifications = bookService.subscribeToNotifications(user.uid, (data) => {
@@ -2417,19 +2461,36 @@ const App = () => {
         setCurrentPage('login');
         setNotifications([]);
         if (unsubProfile) unsubProfile();
-        if (unsubBooks) unsubBooks();
-        if (unsubWishes) unsubWishes();
         if (unsubNotifications) unsubNotifications();
       }
     });
 
-
     return () => {
       unsubscribe();
       if (unsubProfile) unsubProfile();
+      if (unsubNotifications) unsubNotifications();
+    };
+  }, []);
+
+  // Fetch Books & Wishes (Global - for both Guests and Users)
+  useEffect(() => {
+    // Fetch books
+    const unsubBooks = bookService.onBooksSnapshot((books) => {
+      setBooks(books);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Global books fetch failed:", error);
+      setIsLoading(false);
+    });
+
+    // Fetch Wishes
+    const unsubWishes = bookService.onWishesSnapshot((data) => {
+      setWishes(data);
+    });
+
+    return () => {
       if (unsubBooks) unsubBooks();
       if (unsubWishes) unsubWishes();
-      if (unsubNotifications) unsubNotifications();
     };
   }, []);
 
@@ -2511,6 +2572,12 @@ const App = () => {
   };
 
   const handleLogout = async () => {
+    if (currentUser?.isGuest) {
+      setCurrentUser(null);
+      setCurrentPage('login');
+      setNotifications([]);
+      return;
+    }
     await authService.logout();
   };
 
@@ -2572,11 +2639,18 @@ const App = () => {
     }
   };
 
+  const handleGuestLogin = () => {
+    setCurrentUser(GUEST_USER);
+    setCurrentPage('home');
+    setCoins(0);
+    setNotifications([]);
+  };
+
   if (!currentUser && currentPage !== 'login') return null;
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'login': return <LoginPage />;
+      case 'login': return <LoginPage onLogin={null} onGuestLogin={handleGuestLogin} />;
       case 'home': return <HomePage
         onNavigate={navigate}
         user={currentUser}
@@ -2591,6 +2665,7 @@ const App = () => {
         examCountdown={examCountdown}
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
         hasUnreadNotifications={hasUnreadNotifications}
+        onLogout={handleLogout}
       />;
       case 'product': return <ProductDetailPage product={selectedProduct} currentUser={currentUser} onBack={() => navigate('home')} onContact={async () => {
         try {
@@ -2724,5 +2799,6 @@ const Footer = () => (
     </div>
   </footer>
 );
+
 
 export default App;

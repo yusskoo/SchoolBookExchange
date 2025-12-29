@@ -21,5 +21,5 @@ export default defineConfig({
     port: 5173,
   },
   // Base path for GitHub Pages deployment
-  base: process.env.NODE_ENV === 'production' ? '/SchoolBookExchange/' : '/',
+  base: '/',
 })

@@ -16,9 +16,8 @@
 // TODO: 實作離線快取機制
 // TODO: 將 axios 改為統一的 API 層
 
-import { db } from '../config.js';
+import { db, firebase } from '../config.js';
 import axios from 'axios';
-import firebase from 'firebase/compat/app';
 
 export const bookService = {
     /**
