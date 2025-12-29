@@ -2,11 +2,11 @@
  * ============================================
  * 積分商店模組 (Store Handler)
  * ============================================
- * 
+ *
  * 主要功能:
  * 1. 購買虛擬商品（頭像、貼圖等）
  * 2. 每日簽到獎勵
- * 
+ *
  * 虛擬貨幣: 書香幣 (coins)
  * - 新註冊贈送 100 幣
  * - 完成交易獲得 5 幣
@@ -20,7 +20,7 @@
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const { FieldValue } = require("firebase-admin/firestore");
+const {FieldValue} = require("firebase-admin/firestore");
 
 // ============================================
 // 1. 購買商品（頭像/貼圖）
@@ -35,11 +35,11 @@ const { FieldValue } = require("firebase-admin/firestore");
  *    d. 扣除書香幣
  *    e. 將商品加入使用者擁有清單
  * 3. 回傳購買結果
- * 
+ *
  * @param {Object} data - { itemId, price, type }
  * @param {string} type - 'avatar' 或 'sticker'
  * @returns {Promise} { success: true, message: "購買成功" }
- * 
+ *
  * TODO: 加入購買限制（防止異常交易）
  * TODO: 實作購買確認機制
  * TODO: 記錄購買歷史供退款處理
@@ -50,7 +50,7 @@ exports.purchaseItem = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "請先登入帳號");
   }
 
-  const { itemId, price, type } = data; // type: 'avatar' or 'sticker'
+  const {itemId, price, type} = data; // type: 'avatar' or 'sticker'
   const uid = context.auth.uid;
   const db = admin.firestore();
   const userRef = db.collection("users").doc(uid);
@@ -93,7 +93,7 @@ exports.purchaseItem = functions.https.onCall(async (data, context) => {
       t.update(userRef, updates);
     });
 
-    return { success: true, message: "購買成功" };
+    return {success: true, message: "購買成功"};
   } catch (error) {
     console.error("Purchase error:", error);
     if (error instanceof functions.https.HttpsError) throw error;
@@ -114,15 +114,15 @@ exports.purchaseItem = functions.https.onCall(async (data, context) => {
  *    c. 如果未簽到，增加 5 書香幣
  *    d. 更新最後簽到日期
  * 4. 回傳簽到結果
- * 
+ *
  * 獎勵規則:
  * - 每日簽到獲得 5 書香幣
  * - 每天只能簽到一次
  * - 使用台灣時區（UTC+8）計算日期
- * 
+ *
  * @returns {Promise} { success: true, coinsAdded: 5, newBalance: number } 或
  *                    { success: false, message: "今日已簽到", coins: number }
- * 
+ *
  * TODO: 實作連續簽到統計
  * TODO: 加入連續簽到額外獎勵（7天、30天）
  * TODO: 實作簽到提醒功能
@@ -164,7 +164,7 @@ exports.dailyCheckIn = functions.https.onCall(async (data, context) => {
       // Step 2: 檢查今天是否已簽到
       // Pseudocode: 比較最後簽到日期與今天日期
       if (lastCheckIn === todayStr) {
-        return { success: false, message: "今日已簽到", coins: userData.coins || 0 };
+        return {success: false, message: "今日已簽到", coins: userData.coins || 0};
       }
 
       // Step 3: 執行簽到獎勵
@@ -173,11 +173,11 @@ exports.dailyCheckIn = functions.https.onCall(async (data, context) => {
 
       t.update(userRef, {
         coins: newBalance,
-        lastCheckInDate: todayStr,                    // 更新最後簽到日期
+        lastCheckInDate: todayStr, // 更新最後簽到日期
         lastCheckInTime: FieldValue.serverTimestamp(), // 記錄精確時間戳
       });
 
-      return { success: true, coinsAdded: 5, newBalance: newBalance };
+      return {success: true, coinsAdded: 5, newBalance: newBalance};
     });
 
     return result;
@@ -185,8 +185,8 @@ exports.dailyCheckIn = functions.https.onCall(async (data, context) => {
     // Debug logging（開發環境用）
     try {
       require("fs").appendFileSync("d:/SchoolBookExchange/functions/store_debug.txt",
-        new Date().toISOString() + ": CheckIn Error: " + error.message + "\nStack: " + error.stack + "\n");
-    } catch (e) { }
+          new Date().toISOString() + ": CheckIn Error: " + error.message + "\nStack: " + error.stack + "\n");
+    } catch (e) {/* ignore */}
 
     console.error("Check-in error:", error);
     if (error instanceof functions.https.HttpsError) throw error;

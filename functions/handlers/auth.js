@@ -2,7 +2,7 @@
  * ============================================
  * 使用者認證模組 (Auth Handler)
  * ============================================
- * 
+ *
  * 主要功能:
  * 1. 驗證學校信箱網域（從 Firestore 讀取白名單）
  * 2. 角色識別（學生/教師）✨
@@ -18,24 +18,24 @@ const admin = require("firebase-admin");
 // ============================================
 
 function getUserRole(email) {
-  if (email.endsWith('@shsh.ylc.edu.tw')) {
-    return 'teacher';
-  } else if (email.includes('@shsh.tw')) {
-    const prefix = email.split('@')[0];
-    if (prefix.startsWith('stu')) {
-      return 'high_school_student';
-    } else if (prefix.startsWith('u')) {
-      return 'junior_high_student';
+  if (email.endsWith("@shsh.ylc.edu.tw")) {
+    return "teacher";
+  } else if (email.includes("@shsh.tw")) {
+    const prefix = email.split("@")[0];
+    if (prefix.startsWith("stu")) {
+      return "high_school_student";
+    } else if (prefix.startsWith("u")) {
+      return "junior_high_student";
     }
   }
-  return 'invalid';
+  return "invalid";
 }
 
 function extractStudentId(email) {
-  const prefix = email.split('@')[0];
-  if (prefix.startsWith('stu')) {
+  const prefix = email.split("@")[0];
+  if (prefix.startsWith("stu")) {
     return prefix.substring(3);
-  } else if (prefix.startsWith('u')) {
+  } else if (prefix.startsWith("u")) {
     return prefix.substring(1);
   }
   return null;
@@ -62,8 +62,8 @@ async function getAllowedDomains() {
   try {
     const db = admin.firestore();
     const schoolsSnapshot = await db.collection("schools")
-      .where("enabled", "==", true)
-      .get();
+        .where("enabled", "==", true)
+        .get();
 
     if (!schoolsSnapshot.empty) {
       const domains = schoolsSnapshot.docs.map((doc) => doc.data().domain);
@@ -95,7 +95,7 @@ exports.checkSchoolEmail = functions.auth.user().onCreate(async (user) => {
   // 識別使用者角色
   const role = getUserRole(email);
 
-  if (role === 'invalid') {
+  if (role === "invalid") {
     await admin.auth().deleteUser(user.uid);
     console.log(`❌ 刪除無效網域用戶: ${email}`);
     return null;
@@ -137,11 +137,11 @@ exports.checkSchoolEmail = functions.auth.user().onCreate(async (user) => {
 
       // 只有在沒有暱稱時才設定預設暱稱
       if (!doc.exists || !doc.data().nickname) {
-        initialData.nickname = role === 'teacher' ? '新教師' : email.split("@")[0];
+        initialData.nickname = role === "teacher" ? "新教師" : email.split("@")[0];
       }
 
       // 使用 merge: true 確保安全
-      t.set(userRef, initialData, { merge: true });
+      t.set(userRef, initialData, {merge: true});
     });
 
     console.log(`✅ 成功初始化用戶文件: ${user.uid} (${email}) [${role}]`);
@@ -157,7 +157,7 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "請先登入帳號");
   }
 
-  const { realName, studentId, nickname, isLineNotifyEnabled } = data;
+  const {realName, studentId, nickname, isLineNotifyEnabled} = data;
   const uid = context.auth.uid;
   const email = context.auth.token.email;
 
@@ -170,12 +170,12 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
 
   try {
     // 教師邏輯
-    if (role === 'teacher') {
+    if (role === "teacher") {
       if (!realName) {
         throw new functions.https.HttpsError("invalid-argument", "請填寫真實姓名");
       }
 
-      const teacherNickname = realName.charAt(0) + '老師';
+      const teacherNickname = realName.charAt(0) + "老師";
 
       await db.runTransaction(async (t) => {
         t.set(privateRef, {
@@ -186,14 +186,14 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
         // 使用 merge 選項確保不覆蓋現有資料
         t.set(userRef, {
           nickname: teacherNickname,
-          role: 'teacher',
+          role: "teacher",
           isProfileCompleted: true,
           // 確保 email 存在
-          email: email
-        }, { merge: true });
+          email: email,
+        }, {merge: true});
       });
 
-      return { success: true, role: 'teacher' };
+      return {success: true, role: "teacher"};
     }
 
     // 學生邏輯
@@ -205,24 +205,24 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
     const extractedId = extractStudentId(email);
     if (extractedId !== studentId) {
       throw new functions.https.HttpsError(
-        "invalid-argument",
-        `學號與信箱不符！\n\n您的信箱學號為：${extractedId}\n請確認填寫的學號是否正確。`
+          "invalid-argument",
+          `學號與信箱不符！\n\n您的信箱學號為：${extractedId}\n請確認填寫的學號是否正確。`,
       );
     }
 
     // 檢查學號重複
     const existingStudentId = await db.collectionGroup("private_data")
-      .where("studentId", "==", studentId)
-      .limit(1)
-      .get();
+        .where("studentId", "==", studentId)
+        .limit(1)
+        .get();
 
     if (!existingStudentId.empty) {
       const existingUid = existingStudentId.docs[0].ref.parent.parent.id;
 
       if (existingUid !== uid) {
         throw new functions.https.HttpsError(
-          "already-exists",
-          "此學號已被註冊使用。\n\n如果這是您的學號但無法登入，請聯繫管理員協助處理。"
+            "already-exists",
+            "此學號已被註冊使用。\n\n如果這是您的學號但無法登入，請聯繫管理員協助處理。",
         );
       }
     }
@@ -239,10 +239,10 @@ exports.completeProfile = functions.https.onCall(async (data, context) => {
         role: role,
         isProfileCompleted: true,
         isLineNotifyEnabled: !!isLineNotifyEnabled,
-      }, { merge: true });
+      }, {merge: true});
     });
 
-    return { success: true, role: role, message: "實名認證完成" };
+    return {success: true, role: role, message: "實名認證完成"};
   } catch (error) {
     console.error("Profile update error:", error);
     if (error instanceof functions.https.HttpsError) {

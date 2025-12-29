@@ -2,13 +2,13 @@
  * ============================================
  * 行事曆模組 (Calendar Handler)
  * ============================================
- * 
+ *
  * 主要功能:
  * 1. 從 Google Calendar 公開行事曆抓取考試資訊
  * 2. 解析 ICS 格式並篩選考試事件
  * 3. 計算考試倒數天數
  * 4. 提供降級機制（Fallback）
- * 
+ *
  * 資料來源: 正心高中公開行事曆
  */
 
@@ -30,12 +30,12 @@ const https = require("https");
  * 3. 成功：解析 ICS 並篩選考試事件
  * 4. 失敗：使用預設的降級資料（Fallback）
  * 5. 回傳最近 5 場考試的倒數資訊
- * 
+ *
  * 錯誤處理:
  * - 網路錯誤 → 使用 Fallback
  * - 解析錯誤 → 使用 Fallback
  * - 逾時 → 使用 Fallback
- * 
+ *
  * TODO: 實作重試機制（失敗時自動重試 1-2 次）
  * TODO: 記錄失敗原因供後續分析
  */
@@ -111,7 +111,7 @@ exports.getExamCountdown = functions.https.onCall((data, context) => {
  * - 當無法從 Google Calendar 取得資料時使用
  * - 提供預先驗證的考試日期資料
  * - 計算每場考試的剩餘天數
- * 
+ *
  * TODO: 將 Fallback 資料移至 Firestore（方便動態更新）
  * TODO: 定期檢查 Fallback 資料是否過期
  */
@@ -121,10 +121,10 @@ function getFallbackExams() {
 
   // 預先驗證的考試資料
   const mockExams = [
-    { title: "高三第三次定期評量", date: "20260108", displayDate: "01/08-01/09" },
-    { title: "第三次定期評量", date: "20260116", displayDate: "01/16-01/19" },
-    { title: "學科能力測驗", date: "20260117", displayDate: "01/17-01/19" },
-    { title: "第三次定期評量", date: "20260119", displayDate: "01/16-01/19" },
+    {title: "高三第三次定期評量", date: "20260108", displayDate: "01/08-01/09"},
+    {title: "第三次定期評量", date: "20260116", displayDate: "01/16-01/19"},
+    {title: "學科能力測驗", date: "20260117", displayDate: "01/17-01/19"},
+    {title: "第三次定期評量", date: "20260119", displayDate: "01/16-01/19"},
   ];
 
   // Pseudocode: 計算每場考試的剩餘天數
@@ -146,7 +146,7 @@ function getFallbackExams() {
     };
   }).sort((a, b) => a.daysLeft - b.daysLeft); // 按剩餘天數排序（最近的在前）
 
-  return { exams: upcoming };
+  return {exams: upcoming};
 }
 
 // ============================================
@@ -158,9 +158,9 @@ function getFallbackExams() {
  * 2. 篩選包含考試關鍵字的未來事件
  * 3. 按日期排序並取前 5 場
  * 4. 計算每場考試的剩餘天數和顯示格式
- * 
+ *
  * 關鍵字: 段考、學測、會考、模擬考、評量、學科能力測驗
- * 
+ *
  * TODO: 使關鍵字可配置（不同學校可能用詞不同）
  * TODO: 加入事件類型分類（段考、模擬考等）
  */
@@ -196,7 +196,7 @@ function processEvents(icsData, log) {
 
   if (futureExams.length === 0) {
     log("[Calendar] No future exams found matching keywords:", targetKeywords);
-    return { exams: [] };
+    return {exams: []};
   }
 
   // ========================================
@@ -235,7 +235,7 @@ function processEvents(icsData, log) {
     };
   });
 
-  return { exams: upcoming };
+  return {exams: upcoming};
 }
 
 // ========================================
@@ -256,9 +256,9 @@ function formatSimpleDate(date) {
  * 2. 尋找 BEGIN:VEVENT 和 END:VEVENT 標記
  * 3. 提取 SUMMARY（標題）、DTSTART（開始日期）、DTEND（結束日期）
  * 4. 回傳事件陣列
- * 
+ *
  * 限制: 僅支援基本的 ICS 格式，不處理複雜的重複事件
- * 
+ *
  * TODO: 使用完整的 ICS 解析函式庫（如 ical.js）
  * TODO: 支援重複事件（RRULE）
  */
@@ -296,9 +296,9 @@ function parseICS(icsData) {
  * Pseudocode:
  * - ICS 日期格式為 YYYYMMDD 或 YYYYMMDDTHHmmssZ
  * - 提取年月日並建立 Date 物件
- * 
+ *
  * @param {string} icsDateString - ICS 日期字串（如 "20260108"）
- * @returns {Date} JavaScript Date 物件
+ * @return {Date} JavaScript Date 物件
  */
 function parseICSDate(icsDateString) {
   if (!icsDateString) return new Date();

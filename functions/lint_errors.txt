@@ -1,0 +1,188 @@
+
+D:\SchoolBookExchange\functions\handlers\auth.js
+  20:1  error  Missing JSDoc comment  require-jsdoc
+  34:1  error  Missing JSDoc comment  require-jsdoc
+  51:1  error  Missing JSDoc comment  require-jsdoc
+
+D:\SchoolBookExchange\functions\handlers\book.js
+  58:1  error  This line has a length of 117. Maximum allowed is 80  max-len
+
+D:\SchoolBookExchange\functions\handlers\calendar.js
+  109:1  error  Missing JSDoc @return for function                    valid-jsdoc
+  145:1  error  This line has a length of 113. Maximum allowed is 80  max-len
+  155:1  error  Missing JSDoc @return for function                    valid-jsdoc
+  155:1  error  Missing JSDoc for parameter 'icsData'                 valid-jsdoc
+  155:1  error  Missing JSDoc for parameter 'log'                     valid-jsdoc
+  185:1  error  This line has a length of 106. Maximum allowed is 80  max-len
+  226:1  error  This line has a length of 92. Maximum allowed is 80   max-len
+  244:1  error  Missing JSDoc comment                                 require-jsdoc
+  253:1  error  Missing JSDoc @return for function                    valid-jsdoc
+  253:1  error  Missing JSDoc for parameter 'icsData'                 valid-jsdoc
+
+D:\SchoolBookExchange\functions\handlers\line-bot.js
+   46:1   error  This line has a length of 85. Maximum allowed is 80                           max-len
+   71:1   error  This line has a length of 85. Maximum allowed is 80                           max-len
+  142:1   error  This line has a length of 92. Maximum allowed is 80                           max-len
+  148:1   error  This line has a length of 88. Maximum allowed is 80                           max-len
+  158:1   error  This line has a length of 85. Maximum allowed is 80                           max-len
+  168:1   error  This line has a length of 84. Maximum allowed is 80                           max-len
+  171:1   error  This line has a length of 112. Maximum allowed is 80                          max-len
+  196:1   error  This line has a length of 108. Maximum allowed is 80                          max-len
+  198:1   error  This line has a length of 107. Maximum allowed is 80                          max-len
+  206:1   error  This line has a length of 82. Maximum allowed is 80                           max-len
+  226:1   error  This line has a length of 86. Maximum allowed is 80                           max-len
+  231:9   error  Closing curly brace does not appear on the same line as the subsequent block  brace-style
+  236:7   error  Closing curly brace does not appear on the same line as the subsequent block  brace-style
+  251:1   error  Missing JSDoc for parameter 'replyToken'                                      valid-jsdoc
+  251:1   error  Missing JSDoc for parameter 'text'                                            valid-jsdoc
+  251:1   error  Missing JSDoc for parameter 'lineUserId'                                      valid-jsdoc
+  251:1   error  Missing JSDoc for parameter 'db'                                              valid-jsdoc
+  270:1   error  This line has a length of 102. Maximum allowed is 80                          max-len
+  285:1   error  This line has a length of 89. Maximum allowed is 80                           max-len
+  287:1   error  This line has a length of 98. Maximum allowed is 80                           max-len
+  335:1   error  Missing JSDoc for parameter 'replyToken'                                      valid-jsdoc
+  335:1   error  Missing JSDoc for parameter 'userId'                                          valid-jsdoc
+  335:1   error  Missing JSDoc for parameter 'db'                                              valid-jsdoc
+  396:1   error  Missing JSDoc for parameter 'event'                                           valid-jsdoc
+  396:1   error  Missing JSDoc for parameter 'db'                                              valid-jsdoc
+  449:1   error  This line has a length of 103. Maximum allowed is 80                          max-len
+  454:1   error  This line has a length of 91. Maximum allowed is 80                           max-len
+  461:1   error  This line has a length of 96. Maximum allowed is 80                           max-len
+  469:1   error  This line has a length of 81. Maximum allowed is 80                           max-len
+  482:5   error  Closing curly brace does not appear on the same line as the subsequent block  brace-style
+  491:1   error  This line has a length of 103. Maximum allowed is 80                          max-len
+  510:5   error  Closing curly brace does not appear on the same line as the subsequent block  brace-style
+  543:1   error  Missing JSDoc for parameter 'transaction'                                     valid-jsdoc
+  543:1   error  Missing JSDoc for parameter 'db'                                              valid-jsdoc
+  567:1   error  This line has a length of 109. Maximum allowed is 80                          max-len
+  567:42  error  'bookTitle' is assigned a value but never used                                no-unused-vars
+  567:53  error  'agreedPrice' is assigned a value but never used                              no-unused-vars
+  567:66  error  'meetingTime' is assigned a value but never used                              no-unused-vars
+  567:79  error  'meetingLocation' is assigned a value but never used                          no-unused-vars
+  580:1   error  This line has a length of 82. Maximum allowed is 80                           max-len
+  584:1   error  This line has a length of 84. Maximum allowed is 80                           max-len
+  612:1   error  This line has a length of 87. Maximum allowed is 80                           max-len
+  620:1   error  Missing JSDoc comment                                                         require-jsdoc
+  621:1   error  This line has a length of 87. Maximum allowed is 80                           max-len
+  622:1   error  This line has a length of 84. Maximum allowed is 80                           max-len
+  625:1   error  This line has a length of 102. Maximum allowed is 80                          max-len
+  628:1   error  This line has a length of 95. Maximum allowed is 80                           max-len
+
+D:\SchoolBookExchange\functions\handlers\review.js
+   23:8  error  'FieldValue' is assigned a value but never used       no-unused-vars
+   73:1  error  This line has a length of 87. Maximum allowed is 80   max-len
+   79:1  error  This line has a length of 83. Maximum allowed is 80   max-len
+  126:1  error  This line has a length of 110. Maximum allowed is 80  max-len
+
+D:\SchoolBookExchange\functions\handlers\scheduler.js
+   67:1  error  This line has a length of 104. Maximum allowed is 80  max-len
+   69:1  error  This line has a length of 92. Maximum allowed is 80   max-len
+   84:1  error  This line has a length of 116. Maximum allowed is 80  max-len
+   87:1  error  This line has a length of 101. Maximum allowed is 80  max-len
+  128:1  error  This line has a length of 104. Maximum allowed is 80  max-len
+  129:1  error  This line has a length of 106. Maximum allowed is 80  max-len
+  135:1  error  This line has a length of 99. Maximum allowed is 80   max-len
+  137:1  error  This line has a length of 97. Maximum allowed is 80   max-len
+  154:1  error  This line has a length of 127. Maximum allowed is 80  max-len
+  170:1  error  Missing JSDoc comment                                 require-jsdoc
+  201:1  error  Missing JSDoc comment                                 require-jsdoc
+
+D:\SchoolBookExchange\functions\handlers\store.js
+  187:1   error  This line has a length of 85. Maximum allowed is 80   max-len
+  188:1   error  This line has a length of 109. Maximum allowed is 80  max-len
+  189:17  error  Empty block statement                                 no-empty
+
+D:\SchoolBookExchange\functions\handlers\transaction.js
+   20:8  error  'FieldValue' is assigned a value but never used                               no-unused-vars
+   73:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+   92:1  error  This line has a length of 108. Maximum allowed is 80                          max-len
+  113:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+  116:1  error  This line has a length of 92. Maximum allowed is 80                           max-len
+  124:1  error  This line has a length of 105. Maximum allowed is 80                          max-len
+  128:1  error  This line has a length of 98. Maximum allowed is 80                           max-len
+  129:1  error  This line has a length of 99. Maximum allowed is 80                           max-len
+  176:1  error  This line has a length of 123. Maximum allowed is 80                          max-len
+  194:1  error  This line has a length of 89. Maximum allowed is 80                           max-len
+  249:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+  251:1  error  This line has a length of 86. Maximum allowed is 80                           max-len
+  266:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+  291:1  error  This line has a length of 88. Maximum allowed is 80                           max-len
+  297:7  error  Closing curly brace does not appear on the same line as the subsequent block  brace-style
+  306:1  error  This line has a length of 83. Maximum allowed is 80                           max-len
+  324:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+  328:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+  343:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  363:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  367:1  error  This line has a length of 85. Maximum allowed is 80                           max-len
+  370:1  error  This line has a length of 110. Maximum allowed is 80                          max-len
+  376:1  error  This line has a length of 85. Maximum allowed is 80                           max-len
+  386:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  396:1  error  This line has a length of 84. Maximum allowed is 80                           max-len
+  404:1  error  This line has a length of 132. Maximum allowed is 80                          max-len
+  409:1  error  This line has a length of 92. Maximum allowed is 80                           max-len
+  425:1  error  This line has a length of 110. Maximum allowed is 80                          max-len
+  431:1  error  This line has a length of 85. Maximum allowed is 80                           max-len
+  441:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  445:1  error  This line has a length of 81. Maximum allowed is 80                           max-len
+  473:1  error  This line has a length of 110. Maximum allowed is 80                          max-len
+  478:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  479:1  error  This line has a length of 85. Maximum allowed is 80                           max-len
+  489:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  494:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+  504:1  error  This line has a length of 110. Maximum allowed is 80                          max-len
+  529:1  error  This line has a length of 104. Maximum allowed is 80                          max-len
+  546:1  error  This line has a length of 100. Maximum allowed is 80                          max-len
+  549:1  error  This line has a length of 82. Maximum allowed is 80                           max-len
+
+D:\SchoolBookExchange\functions\index.js
+  32:7  error  'functions' is assigned a value but never used        no-unused-vars
+  65:1  error  This line has a length of 84. Maximum allowed is 80   max-len
+  67:1  error  This line has a length of 86. Maximum allowed is 80   max-len
+  68:1  error  This line has a length of 88. Maximum allowed is 80   max-len
+  70:1  error  This line has a length of 81. Maximum allowed is 80   max-len
+  71:1  error  This line has a length of 86. Maximum allowed is 80   max-len
+  91:1  error  This line has a length of 82. Maximum allowed is 80   max-len
+  92:1  error  This line has a length of 89. Maximum allowed is 80   max-len
+  98:1  error  This line has a length of 103. Maximum allowed is 80  max-len
+
+D:\SchoolBookExchange\functions\scripts\init-schools.js
+  52:1  error  Missing JSDoc comment                                require-jsdoc
+  69:1  error  This line has a length of 87. Maximum allowed is 80  max-len
+
+D:\SchoolBookExchange\functions\seed_data.js
+  11:1  error  Missing JSDoc comment  require-jsdoc
+
+D:\SchoolBookExchange\functions\services\line-service.js
+   4:1  error  Missing JSDoc comment                                require-jsdoc
+  55:1  error  This line has a length of 82. Maximum allowed is 80  max-len
+  68:1  error  This line has a length of 82. Maximum allowed is 80  max-len
+
+D:\SchoolBookExchange\functions\simulate_scenario.js
+   2:1  error  This line has a length of 83. Maximum allowed is 80  max-len
+  19:1  error  Missing JSDoc comment                                require-jsdoc
+
+D:\SchoolBookExchange\functions\test_invoice_notify.js
+   5:1  error  This line has a length of 123. Maximum allowed is 80  max-len
+   5:7  error  'serviceAccount' is assigned a value but never used   no-unused-vars
+   9:1  error  Missing JSDoc comment                                 require-jsdoc
+  11:1  error  This line has a length of 85. Maximum allowed is 80   max-len
+  13:1  error  This line has a length of 95. Maximum allowed is 80   max-len
+
+D:\SchoolBookExchange\functions\test_line_bot.js
+  14:1  error  Missing JSDoc comment  require-jsdoc
+
+D:\SchoolBookExchange\functions\verify_calendar.js
+  33:1  error  This line has a length of 83. Maximum allowed is 80  max-len
+  39:1  error  Missing JSDoc comment                                require-jsdoc
+  62:1  error  Missing JSDoc comment                                require-jsdoc
+
+D:\SchoolBookExchange\functions\verify_reminder.js
+  17:1  error  Missing JSDoc comment                                 require-jsdoc
+  26:1  error  This line has a length of 106. Maximum allowed is 80  max-len
+  28:1  error  This line has a length of 103. Maximum allowed is 80  max-len
+  65:1  error  This line has a length of 91. Maximum allowed is 80   max-len
+  67:1  error  This line has a length of 94. Maximum allowed is 80   max-len
+  70:1  error  This line has a length of 83. Maximum allowed is 80   max-len
+
+??151 problems (151 errors, 0 warnings)
+

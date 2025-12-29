@@ -2,7 +2,7 @@
  * ============================================
  * 書籍管理模組 (Book Handler)
  * ============================================
- * 
+ *
  * 主要功能:
  * 1. 刪除書籍（賣家權限）
  */
@@ -25,7 +25,7 @@ const db = admin.firestore();
  * 3. 讀取書籍資料並檢查是否存在
  * 4. 嚴格檢查擁有權（只有賣家可以刪除自己的書籍）
  * 5. 執行刪除操作
- * 
+ *
  * TODO: 實作軟刪除（標記為已刪除而非直接刪除）
  * TODO: 檢查是否有進行中的交易（有交易時不允許刪除）
  * TODO: 記錄刪除歷史供後續分析
@@ -36,7 +36,7 @@ exports.deleteBook = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "請先登入");
   }
 
-  const { bookId } = data;
+  const {bookId} = data;
   if (!bookId) {
     throw new functions.https.HttpsError("invalid-argument", "缺少 Book ID");
   }
@@ -67,23 +67,23 @@ exports.deleteBook = functions.https.onCall(async (data, context) => {
     // - 交易狀態包括：Pending（待確認）、Invoiced（已開立明細）
     // - 如果有，提示使用者先完成或取消交易
     const activeTransactions = await db.collection("transactions")
-      .where("bookId", "==", bookId)
-      .where("status", "in", ["Pending", "Invoiced"])
-      .limit(1) // 只需要知道是否存在即可
-      .get();
+        .where("bookId", "==", bookId)
+        .where("status", "in", ["Pending", "Invoiced"])
+        .limit(1) // 只需要知道是否存在即可
+        .get();
 
     if (!activeTransactions.empty) {
       // 有進行中的交易，拒絕刪除
       throw new functions.https.HttpsError(
-        "failed-precondition",
-        "此書籍有進行中的交易，請先完成或取消交易後再刪除。\n\n" +
-        "您可以在「我的交易」中查看交易詳情。"
+          "failed-precondition",
+          "此書籍有進行中的交易，請先完成或取消交易後再刪除。\n\n" +
+        "您可以在「我的交易」中查看交易詳情。",
       );
     }
 
     // Pseudocode: 執行刪除
     await bookRef.delete();
-    return { success: true };
+    return {success: true};
   } catch (error) {
     console.error("Delete book error:", error);
     throw error;

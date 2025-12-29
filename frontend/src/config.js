@@ -4,8 +4,13 @@ import 'firebase/compat/firestore';
 import 'firebase/compat/functions';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDummyKeyForEmulatorOnly",
-    projectId: "schoolbook-290b6"
+    apiKey: "AIzaSyDTMRmV69xNNK7IFw9UV4OJ9cFTH4Ic5Wo",
+    authDomain: "schoolbook-290b6.firebaseapp.com",
+    projectId: "schoolbook-290b6",
+    storageBucket: "schoolbook-290b6.firebasestorage.app",
+    messagingSenderId: "657831894632",
+    appId: "1:657831894632:web:5354da4b4a090785ee65dd",
+    measurementId: "G-P90QZ00GG7"
 };
 
 // Initialize only if not already initialized

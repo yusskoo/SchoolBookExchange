@@ -733,6 +733,10 @@ const LoginPage = ({ onLogin, onGuestLogin }) => {
         try {
           setIsLoading(true);
           await authService.signInWithLink(savedEmail, window.location.href);
+
+          // Clear URL parameters to prevent re-triggering verification on refresh
+          window.history.replaceState({}, document.title, window.location.pathname);
+
           window.localStorage.removeItem('emailForSignIn');
 
           // 還原表單狀態
@@ -779,13 +783,18 @@ const LoginPage = ({ onLogin, onGuestLogin }) => {
         setIsLoading(true);
         await authService.sendVerificationLink(email);
 
-        // Update localStorage with derived ID
+        // Update localStorage with derived ID - 【關鍵修復】
         window.localStorage.setItem('emailForSignIn', email);
-        window.localStorage.setItem('registrationForm', JSON.stringify({ role, realName, studentId: derivedId }));
+        // 不論是學生還是老師，都要盡量存多一點資料
+        window.localStorage.setItem('registrationForm', JSON.stringify({
+          role,
+          realName,
+          studentId: derivedId  // 學生一定要存這個
+        }));
 
         setIsVerifying(true);
         setTimeout(() => {
-          alert(`驗證信已寄送至 ${email}，請至信箱點擊連結！`);
+          alert(`驗證信已寄送至 ${email}，請至信箱點擊連結！注意:可能會在垃圾郵件中`);
         }, 100);
       } catch (e) {
         alert('寄送失敗: ' + e.message);
@@ -799,9 +808,10 @@ const LoginPage = ({ onLogin, onGuestLogin }) => {
       setIsLoading(true);
       await authService.sendVerificationLink(email);
       window.localStorage.setItem('emailForSignIn', email);
+      // Teachers don't need studentId, but keep structure consistent
       window.localStorage.setItem('registrationForm', JSON.stringify({ role, realName }));
       setIsVerifying(true);
-      alert(`驗證信已寄送至 ${email}，請至信箱點擊連結！`);
+      alert(`驗證信已寄送至 ${email}，請至信箱點擊連結！注意:可能會在垃圾郵件中`);
     } catch (e) {
       alert('寄送失敗: ' + e.message);
     } finally {
@@ -818,6 +828,13 @@ const LoginPage = ({ onLogin, onGuestLogin }) => {
       await authService.updateUserPassword(password);
 
       // 2. 建立資料
+      // 二次檢查：如果資料遺失，禁止送出
+      if (!realName || (role !== 'teacher' && !studentId)) {
+        alert("資料不完整（姓名或學號遺失），請重新填寫");
+        setIsVerified(false); // 重置驗證狀態以允許編輯
+        return;
+      }
+
       const generatedNickname = (realName.trim()[0] || "") + (role === 'teacher' ? "老師" : "同學");
       await authService.completeProfile({ realName, studentId, nickname: generatedNickname });
 
@@ -827,7 +844,9 @@ const LoginPage = ({ onLogin, onGuestLogin }) => {
       alert('註冊成功！系統將自動登入');
     } catch (e) {
       console.error(e);
-      alert('註冊失敗，請聯繫管理員: ' + e.message);
+      // 顯示詳細錯誤資訊 (如果有)
+      const errorDetail = e.details ? `\n詳細資訊: ${typeof e.details === 'object' ? JSON.stringify(e.details) : e.details}` : '';
+      alert('註冊失敗，請聯繫管理員: ' + e.message + errorDetail);
     } finally {
       setIsLoading(false);
     }

@@ -2,14 +2,14 @@
  * ============================================
  * LINE Bot 整合模組 (LINE Bot Handler)
  * ============================================
- * 
+ *
  * 主要功能:
  * 1. LINE 帳號綁定（產生綁定碼、處理綁定）
  * 2. LINE Webhook 處理（文字訊息、Postback 事件）
  * 3. 自動回覆機器人（查詢交易、功能說明）
  * 4. 交易明細通知（Flex Message）
  * 5. 面交結果回報（成功/失敗）
- * 
+ *
  * 事件類型:
  * - message.text: 文字訊息（綁定碼、自動回覆）
  * - postback: 互動按鈕回應（確認成功/失敗）
@@ -34,9 +34,9 @@ const lineService = require("../services/line-service");
  * 3. 設定 10 分鐘有效期限
  * 4. 儲存至 line_codes collection
  * 5. 回傳綁定碼和過期時間給前端
- * 
+ *
  * @returns {Promise} { success: true, code: "123456", expiresAt: Timestamp }
- * 
+ *
  * TODO: 實作綁定碼重複檢查（確保唯一性）
  * TODO: 加入綁定碼使用次數限制
  * TODO: 記錄綁定碼產生歷史
@@ -61,7 +61,7 @@ exports.generateBindingCode = functions.https.onCall(async (data, context) => {
     timestamp: new Date(),
   });
 
-  return { success: true, code: code, expiresAt: expiresAt };
+  return {success: true, code: code, expiresAt: expiresAt};
 });
 
 // ============================================
@@ -73,7 +73,7 @@ exports.unbindLineAccount = functions.https.onCall(async (data, context) => {
   try {
     const uid = context.auth.uid;
     const db = admin.firestore();
-    const { FieldValue } = require("firebase-admin/firestore");
+    const {FieldValue} = require("firebase-admin/firestore");
 
     await db.collection("users").doc(uid).update({
       lineUserId: FieldValue.delete(),
@@ -81,14 +81,14 @@ exports.unbindLineAccount = functions.https.onCall(async (data, context) => {
       lineBoundAt: FieldValue.delete(),
     });
 
-    return { success: true };
+    return {success: true};
   } catch (e) {
     console.error("Unbind Error:", e);
     throw new functions.https.HttpsError("internal", "解除綁定失敗: " + e.message);
   }
 });
 
-const cors = require("cors")({ origin: true });
+const cors = require("cors")({origin: true});
 
 // ============================================
 // 2. LINE Webhook 主處理程式
@@ -100,12 +100,12 @@ const cors = require("cors")({ origin: true });
  *    a. message.text: 文字訊息（綁定碼、自動回覆）
  *    b. postback: 互動按鈕回應（面交結果）
  * 3. 回傳 200 OK 給 LINE
- * 
+ *
  * 特殊處理:
  * - ngrok 瀏覽器警告跳過（免費版）
  * - 空事件列表處理（驗證請求）
  * - 待處理輸入請求（如失敗原因）
- * 
+ *
  * TODO: 加入更多事件類型支援（follow, unfollow）
  * TODO: 實作 Webhook 簽章驗證（安全性）
  * TODO: 加入錯誤重試機制
@@ -165,7 +165,7 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
                   const userDoc = await t.get(userRef);
                   if (userDoc.exists) {
                     const currentScore = userDoc.data().creditScore || 100;
-                    t.update(userRef, { creditScore: Math.max(0, currentScore - 5) });
+                    t.update(userRef, {creditScore: Math.max(0, currentScore - 5)});
                   }
                 });
                 console.log(`Penalty applied to ${counterpartyId} (-5) triggered by report from ${reporterId}`);
@@ -257,7 +257,7 @@ exports.lineWebhook = functions.https.onRequest(async (req, res) => {
  *    - 「查詢/訂單/交易」→ 顯示交易列表
  *    - 「幫助/功能/help」→ 顯示功能說明
  *    - 其他 → 顯示功能選單（Buttons Template）
- * 
+ *
  * TODO: 加入更多關鍵字（如「書籍」、「積分」）
  * TODO: 實作自然語言理解（NLU）
  * TODO: 加入常見問題自動回答
@@ -272,7 +272,7 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
   if (userQuery.empty) {
     // Pseudocode: 未綁定帳號，提示綁定流程
     await lineService.replyMessage(replyToken,
-      "👋 歡迎使用校園二手書循環平台！\n\n" +
+        "👋 歡迎使用校園二手書循環平台！\n\n" +
       "請先在網頁平台登入後，於個人專區取得綁定碼，然後在此輸入 6 位數綁定碼以連結您的帳戶。",
     );
     return;
@@ -286,7 +286,7 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
     await replyTransactionList(replyToken, userId, db);
   } else if (textLower.includes("幫助") || textLower.includes("功能") || textLower.includes("help")) {
     await lineService.replyMessage(replyToken,
-      "📚 功能說明：\n\n" +
+        "📚 功能說明：\n\n" +
       "• 輸入「查詢訂單」- 查看進行中的交易\n" +
       "• 輸入「幫助」- 顯示此說明\n" +
       "• 當有新訂單或交易更新時，我會主動通知您\n" +
@@ -343,7 +343,7 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
  *    - 書名
  *    - 價格
  *    - 面交時間
- * 
+ *
  * TODO: 使用 Flex Message 美化交易列表顯示
  * TODO: 加入交易狀態篩選（可查看已完成的交易）
  * TODO: 加入分頁功能（超過 5 筆時）
@@ -352,17 +352,17 @@ async function handleAutoReply(replyToken, text, lineUserId, db) {
 async function replyTransactionList(replyToken, userId, db) {
   // Pseudocode: 查詢買家交易
   const buyerTrans = await db.collection("transactions")
-    .where("buyerId", "==", userId)
-    .where("status", "==", "Pending")
-    .limit(5)
-    .get();
+      .where("buyerId", "==", userId)
+      .where("status", "==", "Pending")
+      .limit(5)
+      .get();
 
   // Pseudocode: 查詢賣家交易
   const sellerTrans = await db.collection("transactions")
-    .where("sellerId", "==", userId)
-    .where("status", "==", "Pending")
-    .limit(5)
-    .get();
+      .where("sellerId", "==", userId)
+      .where("status", "==", "Pending")
+      .limit(5)
+      .get();
 
   const allTrans = [...buyerTrans.docs, ...sellerTrans.docs];
 
@@ -411,7 +411,7 @@ async function replyTransactionList(replyToken, userId, db) {
  *       - 建立待處理輸入請求
  *       - 提示用戶輸入失敗原因
  * 4. 回覆用戶處理結果
- * 
+ *
  * TODO: 加入面交照片上傳功能
  * TODO: 實作面交延期功能（雙方同意延期）
  * TODO: 加入自動提醒未確認的用戶
@@ -466,7 +466,7 @@ async function handlePostback(event, db) {
 
           // [New] 自動下架書籍
           if (trans.bookId) {
-            t.update(db.collection('books').doc(trans.bookId), { status: 'Sold' });
+            t.update(db.collection("books").doc(trans.bookId), {status: "Sold"});
           }
         }
 
@@ -476,7 +476,7 @@ async function handlePostback(event, db) {
       // Pseudocode: 回覆用戶
       const lineUserId = event.source.userId;
       await lineService.pushMessage(lineUserId,
-        "✅ 已記錄面交成功！\n\n" +
+          "✅ 已記錄面交成功！\n\n" +
         "感謝您的回報，等待對方確認後交易將自動完成。",
       );
     }
@@ -504,7 +504,7 @@ async function handlePostback(event, db) {
 
       const lineUserId = event.source.userId;
       await lineService.pushMessage(lineUserId,
-        "❌ 已記錄面交失敗。\n\n" +
+          "❌ 已記錄面交失敗。\n\n" +
         "系統已收到您的回報，管理員將會跟進處理。",
       );
     }
@@ -523,7 +523,7 @@ async function handlePostback(event, db) {
 
       // Pseudocode: 提示用戶輸入失敗原因
       await lineService.pushMessage(lineUserId,
-        "請簡述面交失敗的原因：\n" +
+          "請簡述面交失敗的原因：\n" +
         "（例如：對方未出現、書籍與描述不符等）",
       );
     }
@@ -548,23 +548,23 @@ async function handlePostback(event, db) {
  * 4. 建立 Flex Message 格式的交易明細
  * 5. 分別發送給買家和賣家（如果有啟用通知）
  * 6. 記錄發送結果
- * 
+ *
  * 通知內容:
  * - 角色（買家/賣家）
  * - 書籍名稱
  * - 價格
  * - 面交時間地點
  * - 互動按鈕（面交成功/失敗）
- * 
+ *
  * 此函數會由 transaction.js 的 Firestore trigger 呼叫
- * 
+ *
  * TODO: 加入通知發送失敗重試機制
  * TODO: 實作通知發送歷史記錄
  * TODO: 加入通知樣板管理（可自訂樣式）
  * TODO: 支援多語言通知
  */
 exports.sendInvoiceNotification = async (transaction, db) => {
-  const { id: transId, buyerId, sellerId, bookTitle, agreedPrice, meetingTime, meetingLocation } = transaction;
+  const {id: transId, buyerId, sellerId, bookTitle, agreedPrice, meetingTime, meetingLocation} = transaction;
 
   // Pseudocode: 取得買賣雙方的使用者資料
   const buyerDoc = await db.collection("users").doc(buyerId).get();
@@ -577,11 +577,11 @@ exports.sendInvoiceNotification = async (transaction, db) => {
 
   // Pseudocode: 檢查買家是否啟用 LINE 通知
   if (buyerData.isLineNotifyEnabled && buyerData.lineUserId) {
-    recipients.push({ lineUserId: buyerData.lineUserId, uid: buyerId, role: "買家" });
+    recipients.push({lineUserId: buyerData.lineUserId, uid: buyerId, role: "買家"});
   }
   // Pseudocode: 檢查賣家是否啟用 LINE 通知
   if (sellerData.isLineNotifyEnabled && sellerData.lineUserId) {
-    recipients.push({ lineUserId: sellerData.lineUserId, uid: sellerId, role: "賣家" });
+    recipients.push({lineUserId: sellerData.lineUserId, uid: sellerId, role: "賣家"});
   }
 
   if (recipients.length === 0) {
@@ -591,9 +591,9 @@ exports.sendInvoiceNotification = async (transaction, db) => {
 
   // Pseudocode: 使用 Flex Message 製作精美的明細通知
   const flexMessage = createInvoiceFlexMessage(
-    transaction,
-    buyerData.nickname || "買家",
-    sellerData.nickname || "賣家",
+      transaction,
+      buyerData.nickname || "買家",
+      sellerData.nickname || "賣家",
   );
 
   // Pseudocode: 發送給雙方
@@ -619,7 +619,7 @@ exports.sendInvoiceNotification = async (transaction, db) => {
 // 建立 Flex Message 格式的交易明細
 function createInvoiceFlexMessage(transaction, buyerNickname, sellerNickname) {
   console.log("Creating Invoice Flex with:", JSON.stringify(transaction)); // Debug Log
-  const { bookTitle, agreedPrice, price, meetingTime, meetingLocation } = transaction;
+  const {bookTitle, agreedPrice, price, meetingTime, meetingLocation} = transaction;
 
   // Fix: Handle 0 properly
   const finalPrice = (agreedPrice !== undefined && agreedPrice !== null) ? agreedPrice : (price || 0);
@@ -631,7 +631,7 @@ function createInvoiceFlexMessage(transaction, buyerNickname, sellerNickname) {
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false
+      hour12: false,
     }) :
     "未設定";
 
