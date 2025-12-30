@@ -29,7 +29,7 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const functions = require("firebase-functions");
+// const functions = require("firebase-functions");
 
 // ============================================
 // 2. 載入所有功能模組（Handlers）

@@ -17,7 +17,6 @@
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const {FieldValue} = require("firebase-admin/firestore");
 const cors = require("cors")({origin: true});
 const emailService = require("../services/email-service");
 

@@ -2,7 +2,7 @@ const admin = require("firebase-admin");
 const lineBot = require("./handlers/line-bot");
 
 // Initialize Admin
-const serviceAccount = require("./serviceAccountKey.json"); // User must have this or use default credential if in emulator
+// User must have this or use default credential if in emulator
 // Actually in emulator we can just init.
 if (!admin.apps.length) admin.initializeApp({projectId: "schoolbook-290b6"});
 

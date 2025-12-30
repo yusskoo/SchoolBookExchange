@@ -564,7 +564,7 @@ async function handlePostback(event, db) {
  * TODO: 支援多語言通知
  */
 exports.sendInvoiceNotification = async (transaction, db) => {
-  const {id: transId, buyerId, sellerId, bookTitle, agreedPrice, meetingTime, meetingLocation} = transaction;
+  const {id: transId, buyerId, sellerId, bookTitle: _bookTitle, agreedPrice: _agreedPrice, meetingTime: _meetingTime, meetingLocation: _meetingLocation} = transaction;
 
   // Pseudocode: 取得買賣雙方的使用者資料
   const buyerDoc = await db.collection("users").doc(buyerId).get();
