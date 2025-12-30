@@ -1,3 +1,26 @@
+/**
+ * ============================================
+ * 校園書籍循環平台 - 主應用程式 (Main App)
+ * ============================================
+ * 
+ * 主要功能:
+ * 1. 使用者介面路由管理（登入、首頁、商品詳情、個人專區）
+ * 2. 全域狀態管理（使用者資料、書籍清單、通知、聊天）
+ * 3. Firebase 即時資料監聽（使用者、書籍、通知、交易）
+ * 4. 頭像系統和虛擬貨幣（書香幣）
+ * 5. 每日簽到和新手禮物
+ * 
+ * 架構:
+ * - 採用單頁應用 (SPA) 設計
+ * - 組件化設計，每個頁面為獨立組件
+ * - 使用 Context-free 狀態管理（useState + props drilling）
+ * 
+ * TODO: 考慮引入 React Router 進行路由管理
+ * TODO: 實作 Context API 或 Redux 減少 props drilling
+ * TODO: 加入 PWA 支援（離線功能、安裝到桌面）
+ * TODO: 實作程式碼分割（Code Splitting）提升載入速度
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Heart, MessageCircle, Share2, Star, AlertCircle, ShoppingCart,
@@ -9,26 +32,40 @@ import { authService } from './services/auth-service';
 import { bookService } from './services/book-service';
 import { chatService } from './services/chat-service';
 
-// --- 全局樣式設定 ---
+// ============================================
+// 全域樣式設定
+// ============================================
 const fontStyle = { fontFamily: '"Noto Sans TC", "PMingLiU", sans-serif' };
 
-// --- 奶茶色系色碼定義 ---
+// ============================================
+// 奶茶色系色碼定義（設計系統）
+// ============================================
+// Pseudocode: 定義統一的配色方案確保視覺一致性
+// TODO: 考慮加入深色模式配色
+// TODO: 將配色移至獨立的 theme.js 檔案
 const COLORS = {
-  whiteBucks: '#E8E3DF',
-  cloudSand: '#E6DBC6',
-  fossilGray: '#C9C3B6',
-  brushwood: '#9E9081',
-  chocolateBubble: '#A58976',
-  brownWindmill: '#756256',
-  bgLight: '#F9F7F5',
+  whiteBucks: '#E8E3DF',      // 淺灰白（背景、邊框）
+  cloudSand: '#E6DBC6',       // 沙色（次要背景）
+  fossilGray: '#C9C3B6',      // 化石灰（禁用狀態）
+  brushwood: '#9E9081',       // 灌木色（次要文字）
+  chocolateBubble: '#A58976', // 巧克力泡泡（強調色）
+  brownWindmill: '#756256',   // 咖啡色（主色、按鈕）
+  bgLight: '#F9F7F5',         // 淺背景
 };
 
-// --- 資料選項常數 ---
+// ============================================
+// 資料選項常數（書籍相關）
+// ============================================
+// Pseudocode: 定義書籍上架時的可選項目
+// TODO: 將這些選項移至 Firestore（方便動態更新）
+// TODO: 加入「其他」選項並允許自訂輸入
 const PUBLISHERS = ['龍騰', '翰林', '南一', '三民', '全華', '泰宇', '其他補習班'];
 const SUBJECTS = ['國文', '英文', '數學', '物理', '化學', '生物', '地科', '歷史', '地理', '公民'];
 const GRADES = ['高一', '高二', '高三'];
 const CONDITION_LEVELS = ['一成新', '三成新', '五成新', '九成新', '全新'];
 
+// Pseudocode: 書籍分類選項（用於首頁篩選）
+// TODO: 加入更細緻的子分類（如自然科可分為物理、化學等）
 const CATEGORIES = [
   { id: 'all', name: '全部' },
   { id: 'chi', name: '國文' },
@@ -40,7 +77,33 @@ const CATEGORIES = [
 ];
 
 
-// --- 全域組件：頭像橫向捲動列 (首頁與個人專區商店使用) ---
+
+// ============================================
+// 全域組件：頭像橫向捲動列
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 接收頭像清單、當前頭像、已擁有頭像、書香幣餘額
+ * 2. 渲染橫向可捲動的頭像卡片列表
+ * 3. 每張卡片顯示：頭像圖片、名稱、價格/狀態按鈕
+ * 4. 按鈕邏輯：
+ *    - 已裝備 → 顯示「使用中」（灰色、禁用）
+ *    - 已擁有 → 顯示「更換」按鈕
+ *    - 未擁有 → 顯示價格，點擊購買
+ *    - 書香幣不足 → 禁用按鈕
+ * 
+ * @param {string} title - 分區標題
+ * @param {Array} avatars - 頭像清單
+ * @param {Function} onPurchase - 購買回調
+ * @param {Function} onEquip - 裝備回調
+ * @param {string} currentAvatarId - 當前裝備的頭像 ID
+ * @param {Array} myAvatars - 已擁有的頭像 ID 列表
+ * @param {number} coins - 書香幣餘額
+ * 
+ * TODO: 加入頭像預覽功能（點擊放大）
+ * TODO: 實作頭像試穿功能（暫時預覽效果）
+ * TODO: 加入頭像解鎖動畫
+ */
 const AvatarRow = ({ title, avatars, onPurchase, onEquip, currentAvatarId, myAvatars, coins }) => (
   <div className="mb-8">
     {/* 標題與裝飾條 */}
@@ -82,9 +145,31 @@ const AvatarRow = ({ title, avatars, onPurchase, onEquip, currentAvatarId, myAva
 );
 
 
-// --- [修改] 頭像列表資料 (Demo Version) ---
+// ============================================
+// 頭像系統資料定義
+// ============================================
+/**
+ * Pseudocode:
+ * - 定義所有可用頭像及其屬性
+ * - 頭像分為vier 類：
+ *   1. 預設角色（classic-1，免費）
+ *   2. 期間限定禮物（pony-gift，新手贈送）
+ *   3. 100 書香幣限定（special 系列）
+ *   4. 經典系列（classic 系列）
+ * 
+ * 每個頭像包含：
+ * - id: 唯一識別碼
+ * - name: 顯示名稱
+ * - price: 價格（0 = 免費）
+ * - src: 圖片來源（支援外部 URL 和 dicebear API）
+ * 
+ * TODO: 將頭像資料移至 Firestore（方便動態新增）
+ * TODO: 加入頭像稀有度系統（普通、稀有、史詩）
+ * TODO: 實作季節限定頭像（自動上下架）
+ * TODO: 加入頭像組合包功能（多個頭像一起購買有折扣）
+ */
 const AVATAR_LIST = [
-  // [類別 4] 預設角色 (經典系列第一支)
+  // [類別 1] 預設角色 (經典系列第一支)
   {
     id: 'classic-1',
     name: '熬夜貓貓',
@@ -92,7 +177,7 @@ const AVATAR_LIST = [
     src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cat&backgroundColor=FFD700'
   },
 
-  // [類別 1] 期間限定禮物
+  // [類別 2] 期間限定禮物
   {
     id: 'pony-gift',
     name: '限定小馬',
@@ -100,7 +185,7 @@ const AVATAR_LIST = [
     src: 'https://i.postimg.cc/9fW28Bc0/niu.jpg'
   },
 
-  // [類別 2] 100 代幣限定 (ID 以 special 開頭)
+  // [類別 3] 100 代幣限定 (ID 以 special 開頭)
   {
     id: 'special1',
     name: '限定兔兔',
@@ -132,7 +217,7 @@ const AVATAR_LIST = [
     src: 'https://i.postimg.cc/VkjgJMr4/84AD5380-E492-4603-B7C7-4BD68372B94A.jpg'
   },
 
-  // [類別 3] 經典系列
+  // [類別 4] 經典系列
   { id: 'classic-2', name: '考滿分', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
   { id: 'classic-3', name: '校園酷蓋', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
   { id: 'classic-4', name: '文藝青年', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
@@ -161,7 +246,26 @@ const GUEST_USER = {
 };
 
 
-// --- Helper Functions ---
+// ============================================
+// 輔助函數：時間格式化
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 判斷時間戳類型（Firestore Timestamp 或 Date）
+ * 2. 計算與當前時間的差異（秒數）
+ * 3. 根據差異回傳相對時間字串：
+ *    - < 60秒 → 「剛剛」
+ *    - < 1小時 → 「X分鐘前」
+ *    - < 1天 → 「X小時前」
+ *    - < 30天 → 「X天前」
+ *    - >= 30天 → 完整日期
+ * 
+ * @param {Timestamp|Date} timestamp - 時間戳
+ * @returns {string} 相對時間字串
+ * 
+ * TODO: 加入國際化支援（多語言）
+ * TODO: 加入「昨天」、「前天」等更友善的顯示
+ */
 const getRelativeTime = (timestamp) => {
   if (!timestamp) return "";
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -177,22 +281,22 @@ const getRelativeTime = (timestamp) => {
 };
 
 // 圖片優化代理 (加速外部圖片載入)
-const optimizeImage = (url, width = 150, quality = 50) => {
-  // Temporarily disabled optimization to debug image loading issues
-  // Return original URL for all images
-  return url;
-
-  /* Original implementation:
+const optimizeImage = (url, width = 150, quality = 60) => {
   if (!url) return url;
   // For external images (postimg.cc, dicebear), use weserv.nl for caching and compression
   // For base64 images, return as-is
   if (url.startsWith('data:')) return url;
-  if (url.includes('postimg.cc') || url.includes('api.dicebear.com')) {
+
+  // Optimization Logic:
+  // 1. dicebear: already SVG/fast, but caching helps.
+  // 2. postimg.cc: definitely needs compression.
+  if (url.includes('postimg.cc') || url.includes('api.dicebear.com') || url.includes('googleusercontent')) {
+    // Use weserv.nl for optimization
+    // output=webp for better compression
     return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${width}&q=${quality}&output=webp`;
   }
   // For other URLs, return as-is
   return url;
-  */
 };
 
 const normalizeTime = (timeStr) => {
@@ -242,7 +346,27 @@ const SkeletonCard = () => (
   </div>
 );
 
-// --- 輔助函數：圖片壓縮處理 ---
+// ============================================
+// 輔助函數：圖片壓縮處理
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 將 base64 圖片載入到 Canvas
+ * 2. 計算縮放比例（保持寬高比）
+ * 3. 在 Canvas 上繪製縮小後的圖片
+ * 4. 轉換為 JPEG 格式並壓縮
+ * 5. 回傳壓縮後的 base64 字串
+ * 
+ * @param {string} base64Str - 原始 base64 圖片
+ * @param {number} maxWidth - 最大寬度 (預設 800)
+ * @param {number} maxHeight - 最大高度 (預設 800)
+ * @param {number} quality - 壓縮品質 0-1 (預設 0.6)
+ * @returns {Promise<string>} 壓縮後的 base64
+ * 
+ * TODO: 加入 WebP 格式支援（更好的壓縮率）
+ * TODO: 實作批次壓縮功能
+ * TODO: 加入壓縮進度回調
+ */
 const compressImage = (base64Str, maxWidth = 800, maxHeight = 800, quality = 0.6) => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -273,7 +397,32 @@ const compressImage = (base64Str, maxWidth = 800, maxHeight = 800, quality = 0.6
 
 // (Moved getRelativeTime to top)
 
-// --- [組件] 自動輪播精選區 ---
+
+// ============================================
+// 組件：自動輪播精選區
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 接收書籍列表，取前 5 本作為精選
+ * 2. 每 4 秒自動切換到下一本（無限循環）
+ * 3. 顯示動態跑馬燈訊息（最新上架資訊）
+ * 4. 點擊整個卡片可進入商品詳情
+ * 5. 底部顯示進度條指示器
+ * 
+ * 視覺效果：
+ * - 背景：模糊放大的書籍封面
+ * - 前景：清晰的書籍封面 + 資訊
+ * - 動畫：fade-in-up + 進度條填充
+ * 
+ * @param {Array} items - 書籍列表
+ * @param {Function} onNavigate - 導航回調
+ * @param {Object} currentUser - 當前使用者
+ * 
+ * TODO: 加入手動左右切換按鈕
+ * TODO: 實作觸控滑動切換
+ * TODO: 加入暫停功能（hover 時暫停輪播）
+ * TODO: 精選邏輯改為後端推薦算法
+ */
 const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const featuredItems = (items || []).slice(0, 5); // Use first 5 real items
@@ -431,7 +580,28 @@ const FeaturedCarousel = ({ items, onNavigate, currentUser }) => {
   );
 };
 
-// --- [組件] 首頁：考前倒數計時卡片 ---
+
+// ============================================
+// 組件：考前倒數計時卡片
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 接收考試倒數資料（從後端行事曆 API 取得）
+ * 2. 顯示最近一場考試的剩餘天數
+ * 3. 支援多場考試切換（下拉選單）
+ * 4. 右上角提供 Google Calendar 外部連結
+ * 
+ * 資料來源：
+ * - 由 `getExamCountdown` Cloud Function 提供
+ * - 自動從學校 Google Calendar 抓取
+ * - 包含降級機制（Fallback）
+ * 
+ * @param {Object} examCountdown - { exams: [{ title, daysLeft, displayDate }] }
+ * 
+ * TODO: 加入考試類型圖示（段考、模擬考等）
+ * TODO: 實作倒數提醒功能（剩 3 天時特別提示）
+ * TODO: 加入「加入我的行事曆」功能
+ */
 const ExamWidget = ({ examCountdown }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const exams = examCountdown?.exams || [];
@@ -496,7 +666,35 @@ const TickerWidget = () => (
 );
 
 
-// --- [組件] 首頁：許願池區塊 (留言板) ---
+
+// ============================================
+// 組件：許願池區塊（留言板）
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 顯示所有使用者的許願內容（分頁顯示，每頁 5 筆）
+ * 2. 支援文字 + 圖片許願
+ * 3. 點擊自己的頭像可刪除許願（二次確認）
+ * 4. 訪客無法許願（需登入）
+ * 5. 圖片可點擊放大預覽
+ * 
+ * 許願流程：
+ * 1. 點擊「我也想許願」按鈕
+ * 2. 開啟 Modal 輸入內容
+ * 3. 可選擇上傳圖片（自動壓縮）
+ * 4. 發佈後即時顯示在列表頂部
+ * 
+ * @param {Array} wishes - 許願列表
+ * @param {Function} onAddWish - 新增許願回調
+ * @param {Function} onDeleteWish - 刪除許願回調
+ * @param {Object} currentUser - 當前使用者
+ * @param {Object} currentAvatar - 當前頭像
+ * 
+ * TODO: 加入許願分類（找書、找筆記、其他）
+ * TODO: 實作許願回覆功能
+ * TODO: 加入熱門許願排序
+ * TODO: 實作許願通知（有人回覆時）
+ */
 const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvatar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [content, setContent] = useState('');
@@ -699,8 +897,45 @@ const WishingWell = ({ wishes, onAddWish, onDeleteWish, currentUser, currentAvat
   );
 };
 
-// --- [頁面] 登入與註冊頁面 ---
-// --- [頁面] 登入與註冊頁面 ---
+
+// ============================================
+// 頁面：登入與註冊
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 三種模式切換：
+ *    - login: 登入頁面
+ *    - register-role: 角色選擇（學生/教師）
+ *    - register-form: 註冊表單
+ * 
+ * 2. 註冊流程（Email Link 驗證）：
+ *    a. 選擇角色（學生/教師）
+ *    b. 填寫真實姓名 + 校用信箱
+ *    c. 點擊「認證信箱」發送驗證信
+ *    d. 至信箱點擊連結回到網站
+ *    e. 設定密碼完成註冊
+ * 
+ * 3. 學生特殊邏輯：
+ *    - 信箱格式：stu/u + 學號@shsh.tw
+ *    - 自動從信箱提取學號
+ *    - 驗證學號與信箱一致性
+ * 
+ * 4. 教師邏輯：
+ *    - 信箱格式：xxx@shsh.ylc.edu.tw
+ *    - 僅需真實姓名
+ * 
+ * 5. 登入流程：
+ *    - Email + Password 登入
+ *    - 登入成功後自動導向主頁
+ * 
+ * @param {Function} onLogin - 登入回調（已廢棄，改用 authService）
+ * @param {Function} onGuestLogin - 訪客登入回調
+ * 
+ * TODO: 加入「忘記密碼」功能
+ * TODO: 實作 Google 第三方登入
+ * TODO: 加入註冊進度條
+ * TODO: 改善錯誤提示的使用者體驗
+ */
 const LoginPage = ({ onLogin, onGuestLogin }) => {
   const [mode, setMode] = useState('login'); // 'login' | 'register-role' | 'register-form'
   const [role, setRole] = useState(null); // 'teacher' | 'student'
@@ -1033,7 +1268,33 @@ const LoginPage = ({ onLogin, onGuestLogin }) => {
   );
 };
 
-// --- [頁面] 商品詳情頁面 ---
+
+// ============================================
+// 頁面：商品詳情頁面
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 顯示完整的書籍資訊（圖片、標題、價格、狀況、描述）
+ * 2. 自動檢測是否為賣家本人（顯示不同按鈕）
+ * 3. 非賣家：顯示「聯絡賣家」按鈕
+ * 4. 賣家本人：不顯示聯絡按鈕
+ * 5. 訪客：提示需登入才能聯絡
+ * 6. 記錄商品瀏覽次數（進入頁面時自動 +1）
+ * 
+ * 響應式設計：
+ * - 桌面版：左右分欄佈局（圖片 | 資訊）
+ * - 行動版：上下堆疊 + 底部固定按鈕
+ * 
+ * @param {Object} product - 書籍資料
+ * @param {Function} onBack - 返回上一頁回調
+ * @param {Function} onContact - 聯絡賣家回調
+ * @param {Object} currentUser - 當前使用者
+ * 
+ * TODO: 加入商品分享功能（複製連結、社群媒體分享）
+ * TODO: 實作商品收藏功能
+ * TODO: 加入相似商品推薦
+ * TODO: 顯示賣家其他商品
+ */
 const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   if (!product) return null;
   const isOwner = (currentUser?.uid && product.sellerId && String(currentUser.uid) === String(product.sellerId)) ||
@@ -1178,7 +1439,38 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
   );
 };
 
-// --- [頁面] 主頁面 (包含橫幅、精選、書籍清單) ---
+
+// ============================================
+// 頁面：主頁面（首頁）
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 顯示頂部搜尋列和分類篩選
+ * 2. 精選輪播 + 考試倒數 Widget（僅在「全部」分類時顯示）
+ * 3. 許願池區塊（社群留言板）
+ * 4. 書籍列表（Grid 佈局，每頁 20 本）
+ * 5. 分頁控制（支援多頁瀏覽）
+ * 
+ * 篩選功能：
+ * - 搜尋：書名關鍵字搜尋
+ * - 分類：全部、國文、英文、數學、自然、社會、課外讀物
+ * - 排序：按上架時間倒序（最新在前）
+ * 
+ * 載入狀態：
+ * - 載入中：顯示骨架屏（Skeleton）
+ * - 無資料：顯示「找不到符合書籍」+ 返回主頁按鈕
+ * - 有資料：Grid 佈局顯示書籍卡片
+ * 
+ * 響應式設計：
+ * - 手機：2 欄
+ * - 平板：3 欄
+ * - 桌面：4-5 欄
+ * 
+ * TODO: 加入更多篩選選項（價格範圍、書況等）
+ * TODO: 實作無限滾動載入
+ * TODO: 加入書籍排序選項（價格、熱門度等）
+ * TODO: 實作書籍收藏/追蹤功能
+ */
 const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish, onDeleteWish, books, isLoading, examCountdown, onToggleNotifications, hasUnreadNotifications, onLogout }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -1437,7 +1729,44 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
   );
 };
 
-// --- [頁面] 個人專區 (包含我的書櫃、上架功能、頭像商店) ---
+
+// ============================================
+// 頁面：個人專區
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 三個分頁切換：
+ *    - 我的書櫃：顯示自己上架的書籍
+ *    - 上架書籍：新增/編輯書籍表單
+ *    - 頭像商店：購買和裝備頭像
+ * 
+ * 2. 我的書櫃功能：
+ *    - 顯示所有自己上架的書籍（即時監聽）
+ *    - 顯示書籍狀態（Available、Reserved、Sold）
+ *    - 支援下架刪除（檢查是否有進行中的交易）
+ *    - 顯示瀏覽次數統計
+ * 
+ * 3. 上架書籍功能：
+ *    - 上傳封面圖片（自動壓縮）
+ *    - 填寫書籍資訊（名稱、分類、年級、科目、價格、書況）
+ *    - 支援「販售」和「贈送」兩種交易方式
+ *    - 輸入 0 元自動切換為贈送模式
+ * 
+ * 4. 頭像商店功能：
+ *    - 分類顯示：限定收藏、經典系列
+ *    - 購買頭像（扣除書香幣）
+ *    - 裝備/更換頭像
+ *    - 即時顯示書香幣餘額
+ * 
+ * 5. LINE 綁定功能：
+ *    - 產生 6 位數綁定碼
+ *    - 解除 LINE 綁定
+ * 
+ * TODO: 加入書籍編輯功能（修改價格、描述）
+ * TODO: 實作書籍上下架排程（定時上架/下架）
+ * TODO: 加入銷售統計報表
+ * TODO: 實作批量管理功能
+ */
 const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, currentAvatarId, onPurchase, onEquip }) => {
   const [tab, setTab] = useState('shelf'); // 'upload', 'shelf', 'store'
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
@@ -1931,7 +2260,44 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
 
 // ... (previous helper functions)
 
-// --- [組件] 聊天對話視窗 (與賣家/買家聯繫) ---
+
+// ============================================
+// 組件：聊天對話視窗
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 即時監聽交易訊息（Firebase Realtime）
+ * 2. 支援文字和圖片訊息
+ * 3. 自動捲動到最新訊息
+ * 4. Textarea 自動調整高度
+ * 
+ * 5. 賣家專屬功能：
+ *    - 開立明細按鈕（自動填充交易明細範本）
+ *    - 明細包含：時間、地點、書籍名稱、價格
+ * 
+ * 6. 明細驗證：
+ *    - 偵測明細格式（特定關鍵字）
+ *    - 驗證時間格式（MM/DD HH:mm）
+ *    - 驗證地點非空
+ *    - 防止選擇過去時間
+ *    - 智能年份處理（12月→1月自動跨年）
+ * 
+ * 7. 訊息渲染：
+ *    - 粗體文字支援（**text**）
+ *    - 圖片可點擊開啟新視窗
+ *    - 日期分隔線（每日第一條訊息）
+ *    - 時間戳顯示（HH:mm）
+ * 
+ * @param {Object} transaction - 交易資料（含 ID 和相關資訊）
+ * @param {Object} currentUser - 當前使用者
+ * @param {Function} onClose - 關閉回調
+ * @param {Function} onBackToList - 返回聊天列表回調
+ * 
+ * TODO: 加入訊息已讀狀態顯示
+ * TODO: 實作訊息撤回功能（限時5分鐘）
+ * TODO: 加入語音訊息支援
+ * TODO: 實作訊息搜尋功能
+ */
 const ChatRoom = ({ transaction, currentUser, onClose, onBackToList }) => {
   const { id: transactionId, sellerId, bookTitle, price } = transaction;
   const [messages, setMessages] = useState([]);
@@ -2346,6 +2712,52 @@ const NotificationCenter = ({ notifications, onClose, onMarkAsRead, onClearAll }
     </div>
   );
 };
+
+// ============================================
+// 主應用程式組件
+// ============================================
+/**
+ * Pseudocode:
+ * 1. 全域狀態管理：
+ *    - 當前頁面（login/home/product/profile）
+ *    - 當前使用者資料
+ *    - 書籍列表、通知、聊天
+ *    - 頭像系統、書香幣
+ * 
+ * 2. Firebase 即時監聽：
+ *    - onAuthStateChanged: 監聽使用者登入狀態
+ *    - onProfileSnapshot: 監聽使用者資料變化
+ *    - onBooksSnapshot: 監聽書籍列表更新
+ *    - onWishesSnapshot: 監聽許願池更新
+ *    - getUserTransactions: 監聽使用者交易
+ * 
+ * 3. 每日簽到系統：
+ *    - 使用 useRef 防止重複呼叫
+ *    - 檢查是否已簽到過（依日期）
+ *    - 成功時顯示 Modal 並更新書香幣
+ * 
+ * 4. 新手禮物系統：
+ *    - 檢測 ponyGiftClaimed 標記
+ *    - 首次登入時顯示歡迎 Modal
+ *    - 贈送限定頭像
+ * 
+ * 5. 頁面路由：
+ *    - login: 登入/註冊頁面
+ *    - home: 主頁（書籍列表）
+ *    - product: 商品詳情
+ *    - profile: 個人專區
+ * 
+ * 6. 浮動功能：
+ *    - 聊天按鈕（右下角）
+ *    - 通知中心（頂部）
+ *    - 聊天列表 Modal
+ * 
+ * TODO: 重構為使用 React Router
+ * TODO: 實作 Context API 減少 props drilling
+ * TODO: 加入錯誤邊界處理（Error Boundary）
+ * TODO: 實作離線模式支援（PWA）
+ * TODO: 加入效能監控和分析
+ */
 const App = () => {
   const [currentPage, setCurrentPage] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
@@ -2414,6 +2826,7 @@ const App = () => {
   const [coins, setCoins] = useState(0);
   const [showCheckInModal, setShowCheckInModal] = useState(false); // Modal state
   const [showPonyGiftModal, setShowPonyGiftModal] = useState(false); // New user gift modal
+  const hasCheckedInSession = useRef(false); // Ref to track daily check-in status per session
   const [wishes, setWishes] = useState(INITIAL_WISHES);
   const [myAvatars, setMyAvatars] = useState(['classic-1']);
   const [currentAvatarId, setCurrentAvatarId] = useState('classic-1'); // Default is now classic-1 (cat)
@@ -2449,20 +2862,28 @@ const App = () => {
               setShowPonyGiftModal(true);
             }
 
-            // Check In Logic
+            // Check In Logic (Fixed: Run only once per session)
             const checkDailyCheckIn = async () => {
+              if (hasCheckedInSession.current) return; // Prevent multiple calls
+
               try {
                 const { functions } = await import('./config');
                 const dailyCheckIn = functions.httpsCallable('dailyCheckIn');
                 const result = await dailyCheckIn();
+                hasCheckedInSession.current = true; // Mark as checked
+
                 if (result.data.success) {
                   setShowCheckInModal(true);
                   setCoins(result.data.newBalance);
                 }
               } catch (e) {
                 console.error("Check-in failed", e);
+                // Don't mark as checked on failure so it might retry on reload, 
+                // but typically we don't want to spam backend on error either.
+                // For now, let's allow retry on reload only.
               }
             };
+
             if (data.isProfileCompleted) {
               checkDailyCheckIn();
             }
@@ -2809,7 +3230,7 @@ const Footer = () => (
       <div className="flex flex-col gap-3 justify-center">
         <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">聯絡我們</div>
         <div className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start">
-          <Mail size={14} /> service@shsh.tw
+          <Mail size={14} /> service@schoolbookexchange.com
         </div>
         <div className="text-[10px] opacity-50 mt-4 font-mono">
           © 2025 SchoolBook Exchange. All rights reserved.

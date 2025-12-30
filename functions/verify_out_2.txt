@@ -1,7 +1,0 @@
-?? Starting Verification for 24h Reminder...
-Creating transaction trans_1767017535316 with meeting time: 2025-12-30T13:12:15.316Z
-??Transaction created.
-Calling http://localhost:5001/school-book-exchang/us-central1/debugMeetingReminders...
-Failed to call endpoint: Request failed with status code 404
-??Verification FAILED: is24hReminderSent is still FALSE
-??Notification check FAILED: No notification found for buyer.
