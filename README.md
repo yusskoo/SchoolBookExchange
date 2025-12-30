@@ -16,6 +16,8 @@
 
 ### 🚀 專案連結
 - **正式環境**: [點此前往網站](https://schoolbook-290b6.web.app/)
+<img width="1536" height="960" alt="image" src="https://github.com/user-attachments/assets/1a2874d7-25e1-4325-a6db-fc9209f92f4e" />
+
 
 ### 📝 開發紀錄
 目前專案已完成 Firebase 部署，正持續優化 LINE Webhook 邏輯。
