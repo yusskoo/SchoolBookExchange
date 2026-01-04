@@ -182,7 +182,7 @@ const AVATAR_LIST = [
     id: 'pony-gift',
     name: '限定小馬',
     price: 0,
-    src: 'https://i.postimg.cc/9fW28Bc0/niu.jpg'
+    src: '/avatars/pony.jpg'
   },
 
   // [類別 3] 100 代幣限定 (ID 以 special 開頭)
@@ -190,38 +190,38 @@ const AVATAR_LIST = [
     id: 'special1',
     name: '限定兔兔',
     price: 100,
-    src: 'https://i.postimg.cc/zyP43KbN/tu-zi.jpg'
+    src: '/avatars/rabbit.jpg'
   },
   {
     id: 'special2',
     name: '限定小豬',
     price: 100,
-    src: 'https://i.postimg.cc/pd2vGBP9/zhu.jpg'
+    src: '/avatars/pig.jpg'
   },
   {
     id: 'special3',
     name: '限定狗狗',
     price: 100,
-    src: 'https://i.postimg.cc/wB6zfk97/gou.jpg'
+    src: '/avatars/dog.jpg'
   },
   {
     id: 'special4',
     name: '限定小牛',
     price: 100,
-    src: 'https://i.postimg.cc/qNvyYNG3/EE1D91FC-D76E-4FBA-A85F-33F8D82EAFEB.jpg'
+    src: '/avatars/cow.jpg'
   },
   {
     id: 'special5',
     name: '限定小羊',
     price: 100,
-    src: 'https://i.postimg.cc/VkjgJMr4/84AD5380-E492-4603-B7C7-4BD68372B94A.jpg'
+    src: '/avatars/sheep.jpg'
   },
 
   // [類別 4] 經典系列
-  { id: 'classic-2', name: '考滿分', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
-  { id: 'classic-3', name: '校園酷蓋', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
-  { id: 'classic-4', name: '文藝青年', price: 100, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
-  { id: 'classic-5', name: '理科腦', price: 100, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
+  { id: 'classic-2', name: '紅髮捲毛', price: 50, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=glasses&backgroundColor=4ADE80' },
+  { id: 'classic-3', name: '校園酷蓋', price: 50, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=cool&backgroundColor=A58976' },
+  { id: 'classic-4', name: '文藝青年', price: 50, src: 'https://api.dicebear.com/7.x/miniavs/svg?seed=artist&backgroundColor=FFB6C1' },
+  { id: 'classic-5', name: '理科腦', price: 50, src: 'https://api.dicebear.com/7.x/bottts/svg?seed=robot&backgroundColor=E0E0E0' },
 ];
 
 
@@ -1545,7 +1545,10 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
       <div className="pt-6 pb-12 px-4 rounded-b-[2rem] shadow-lg" style={{ background: `linear-gradient(135deg, ${COLORS.chocolateBubble}, ${COLORS.brownWindmill})`, color: COLORS.bgLight }}>
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2"><div className="w-8 h-8 backdrop-blur rounded-sm flex items-center justify-center font-bold font-serif" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>校</div><span className="text-xl font-bold tracking-widest">循環平台</span></div>
+            <div className="flex items-center gap-3">
+              <img src="/og-image.jpg" alt="Logo" className="w-10 h-10 rounded-full object-cover border-2 border-white/20 shadow-sm" />
+              <span className="text-xl font-bold tracking-widest">校園循環平台</span>
+            </div>
             <div className="flex items-center gap-3">
               <button onClick={handleResetHome} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Home size={20} /></button>
               <button onClick={onToggleNotifications} className="relative p-2 hover:bg-white/10 rounded-full transition-colors"><Bell size={20} />{hasUnreadNotifications && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />}</button>
@@ -2848,6 +2851,7 @@ const App = () => {
             setCurrentUser(prev => ({ ...prev, ...data, uid: user.uid })); // Ensure uid persists
             setCoins(data.coins || 0);
             setMyAvatars(data.myAvatars || ['classic-1']);
+            setCurrentAvatarId(data.currentAvatarId || 'classic-1'); // Load current avatar
 
             // [Modified] Redirect logic based on profile completion
             if (data.isProfileCompleted) {
@@ -3053,21 +3057,61 @@ const App = () => {
     }
     if (!window.confirm(`確定要花費 ${price} 書香幣購買這個頭像嗎？`)) return;
 
+    // 訪客模式：使用 localStorage
+    if (currentUser?.isGuest) {
+      const guestData = JSON.parse(localStorage.getItem('guestAvatarData') || '{}');
+      const myAvatars = guestData.myAvatars || ['classic-1'];
+      const newCoins = coins - price;
+
+      if (!myAvatars.includes(avatarId)) myAvatars.push(avatarId);
+
+      guestData.myAvatars = myAvatars;
+      guestData.coins = newCoins;
+      localStorage.setItem('guestAvatarData', JSON.stringify(guestData));
+
+      setMyAvatars(myAvatars);
+      setCoins(newCoins);
+      alert("購買成功！");
+      return;
+    }
+
+    // 登入使用者：使用 Firestore
     try {
-      const { functions } = await import('./config'); // Lazy load or import at top
+      const { functions } = await import('./config');
       const purchaseItemFn = functions.httpsCallable('purchaseItem');
       await purchaseItemFn({ itemId: avatarId, price: price, type: 'avatar' });
       alert("購買成功！");
-      // UI updates automatically via onProfileSnapshot
     } catch (error) {
       console.error(error);
       alert("購買失敗: " + error.message);
     }
   };
 
-  const handleEquipAvatar = (avatarId) => {
+  const handleEquipAvatar = async (avatarId) => {
     setCurrentAvatarId(avatarId);
-    // Optional: Save to Firestore
+
+    // 訪客模式：保存到 localStorage
+    if (currentUser?.isGuest) {
+      try {
+        const guestData = JSON.parse(localStorage.getItem('guestAvatarData') || '{}');
+        guestData.currentAvatarId = avatarId;
+        localStorage.setItem('guestAvatarData', JSON.stringify(guestData));
+      } catch (error) {
+        console.error("Failed to save guest avatar:", error);
+      }
+      return;
+    }
+
+    // 登入使用者：保存到 Firestore
+    try {
+      const { db } = await import('./config');
+      await db.collection('users').doc(currentUser.uid).update({
+        currentAvatarId: avatarId
+      });
+    } catch (error) {
+      console.error("Failed to save avatar:", error);
+      alert("頭像更換失敗，請稍後再試");
+    }
   };
 
   const handleClearAllNotifications = async () => {
@@ -3080,9 +3124,17 @@ const App = () => {
   };
 
   const handleGuestLogin = () => {
+    // 從 localStorage 載入訪客資料
+    const guestData = JSON.parse(localStorage.getItem('guestAvatarData') || '{}');
+    const currentAvatarId = guestData.currentAvatarId || 'classic-1';
+    const myAvatars = guestData.myAvatars || ['classic-1'];
+    const savedCoins = guestData.coins || 0;
+
     setCurrentUser(GUEST_USER);
     setCurrentPage('home');
-    setCoins(0);
+    setCoins(savedCoins);
+    setMyAvatars(myAvatars);
+    setCurrentAvatarId(currentAvatarId);
     setNotifications([]);
   };
 
@@ -3230,7 +3282,7 @@ const Footer = () => (
       <div className="flex flex-col gap-3 justify-center">
         <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">聯絡我們</div>
         <div className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start">
-          <Mail size={14} /> service@schoolbookexchange.com
+          <MessageCircle size={14} /> LINE ID : @649fkijr
         </div>
         <div className="text-[10px] opacity-50 mt-4 font-mono">
           © 2025 SchoolBook Exchange. All rights reserved.
@@ -3242,3 +3294,4 @@ const Footer = () => (
 
 
 export default App;
+

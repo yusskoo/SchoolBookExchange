@@ -132,6 +132,7 @@ exports.checkSchoolEmail = functions.auth.user().onCreate(async (user) => {
         canceledTransactions: 0,
         coins: 100,
         myAvatars: ["default"],
+        currentAvatarId: "default",
         joinDate: new Date(),
       };
 
