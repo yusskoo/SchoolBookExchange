@@ -72,3 +72,10 @@ build/
 # dataconnect generated files
 .dataconnect
 
+
+# Environment Files
+.env.development
+.env.production
+
+# Firebase Project Config
+.firebaserc
