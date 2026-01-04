@@ -1,23 +1,45 @@
-## 🎓 SchoolBookExchange - 校園書籍循環平台
+# 🎓 SchoolBook Exchange - 校園書籍循環平台
 
-這是一個基於 **React** 與 **Firebase** 開發的校園二手書交換平台。透過這個平台，學生可以輕鬆地轉售或交換課本，並結合 **LINE Bot** 進行即時的面交進度追蹤。
+![Environment](https://img.shields.io/badge/Environment-Production-green)
+![React](https://img.shields.io/badge/Frontend-React%2018-blue)
+![Firebase](https://img.shields.io/badge/Backend-Firebase%20Functions-orange)
+![LINE](https://img.shields.io/badge/Integration-LINE%20Messaging%20API-00B900)
 
-### ✨ 功能特色
-- 🔐 **學生認證**：確保交易安全，僅限校內學生使用 (正心高級中學)。
-- 📚 **快速上架**：簡單幾步即可發佈書籍資訊。
-- 💬 **LINE 通知**：面交成功或失敗會透過 LINE 機器人即時推播。
-- 📱 **響應式設計**：支援手機與電腦瀏覽。
+這是一個為 **正心高級中學 (SHSH)** 量身打造的二手書交易平台。結合虛擬貨幣機制與 LINE Bot 即時通訊，讓校園內的知識循環變得更安全、有趣且高效。
 
-### 🛠 使用技術
-- **前端**: React (Vite)
-- **後端**: Cloud Functions for Firebase
-- **資料庫**: Google Cloud Firestore
-- **串接 API**: LINE Messaging API
-
-### 🚀 專案連結
-- **正式環境**: [點此前往網站](https://schoolbook-290b6.web.app/)
-<img width="1536" height="960" alt="image" src="https://github.com/user-attachments/assets/1a2874d7-25e1-4325-a6db-fc9209f92f4e" />
+<img width="949" height="499" alt="image" src="https://github.com/user-attachments/assets/f30e2c18-a257-4b21-ad0d-630f21df7f18" />
 
 
-### 📝 開發紀錄
-目前專案已完成 Firebase 部署，正持續優化 LINE Webhook 邏輯。
+## ✨ 核心特色
+
+### 1. 嚴謹的校園身份認證
+- **信箱鎖定**：僅限 `@shsh.tw` 或 `@shsh.ylc.edu.tw` 信箱註冊。
+- **學號綁定**：註冊過程自動提取學號，確保買賣雙方皆為校內真實成員，降低詐騙風險。
+
+### 2. 全方位交易生態
+- **多樣化模式**：支援「一般販售」與「愛心贈送」。
+- **書香幣系統**：透過每日簽到獲得貨幣，可在「頭像商店」購買稀有頭像（如：熬夜貓貓、限定小馬）。
+- **信用評分機制**：每位使用者擁有初始信用分，交易成功與否將直接影響評價，建立誠信社群。
+
+### 3. LINE Bot 深度整合 (重點功能)
+- **即時通知**：當雙方達成協議，賣家開立明細後，系統自動推播 Flex Message 至雙方 LINE。
+- **一鍵回報**：面交完成後，可直接在 LINE 點擊按鈕確認成功。
+- **智能自動回覆**：可透過 LINE 查詢目前進行中的所有訂單狀態。
+
+### 4. 校園生活工具
+- **考試倒數**：串接學校 Google 行事曆，首頁即時顯示段考、模擬考剩餘天數。
+- **許願池**：圖文互動佈告欄，讓學生尋找特定講義或考古題筆記。
+
+## 🛠 技術架構
+
+- **前端 (Frontend)**: 
+  - React 18 + Vite
+  - Tailwind CSS + Lucide React (UI/UX)
+  - Firebase Client SDK (Real-time Snapshots)
+- **後端 (Backend)**: 
+  - Firebase Cloud Functions (Node.js)
+  - Firestore (NoSQL Database)
+- **外部 API**:
+  - LINE Messaging API
+  - Google Calendar API (Exam Countdown)
+  - Dicebear API (Avatar Generation)
