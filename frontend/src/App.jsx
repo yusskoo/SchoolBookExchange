@@ -1335,6 +1335,15 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
         {/* Left: Image */}
         <div className="aspect-[4/3] bg-gray-100 relative md:w-1/2 md:aspect-square md:rounded-2xl md:overflow-hidden md:shadow-sm md:sticky md:top-24">
           <img src={product.cover || product.imageBase64 || "https://dummyimage.com/600x400/eee/aaa"} alt={product.title} className="w-full h-full object-contain bg-[#F9F7F5]" />
+
+          {/* Sold Out Overlay */}
+          {(product.status === 'Reserved' || product.status === 'Sold') && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+              <div className="w-32 h-32 bg-black/70 rounded-full flex items-center justify-center border-2 border-white/50 text-white font-bold tracking-widest text-xl transform -rotate-12 backdrop-blur-sm">
+                已售完
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Details */}
@@ -1400,18 +1409,27 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
             {/* Desktop Contact Button */}
             {!isOwner && (
               <div className="hidden md:block pt-4">
-                <button
-                  onClick={() => {
-                    if (currentUser?.isGuest) {
-                      alert("請先登入以聯絡賣家！");
-                      return;
-                    }
-                    onContact();
-                  }}
-                  className={`w-full py-4 ${currentUser?.isGuest ? 'bg-gray-400 hover:bg-gray-500' : 'bg-[#756256] hover:bg-[#5D4E44]'} text-white rounded-xl font-bold shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-lg`}
-                >
-                  <MessageCircle size={20} /> {currentUser?.isGuest ? '登入後聯絡賣家' : '聯絡賣家 / 預訂'}
-                </button>
+                {(product.status === 'Reserved' || product.status === 'Sold') ? (
+                  <button
+                    disabled
+                    className="w-full py-4 bg-gray-300 text-white rounded-xl font-bold shadow-none cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+                  >
+                    售完
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (currentUser?.isGuest) {
+                        alert("請先登入以聯絡賣家！");
+                        return;
+                      }
+                      onContact();
+                    }}
+                    className={`w-full py-4 ${currentUser?.isGuest ? 'bg-gray-400 hover:bg-gray-500' : 'bg-[#756256] hover:bg-[#5D4E44]'} text-white rounded-xl font-bold shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-lg`}
+                  >
+                    <MessageCircle size={20} /> {currentUser?.isGuest ? '登入後聯絡賣家' : '聯絡賣家 / 預訂'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1421,18 +1439,27 @@ const ProductDetailPage = ({ product, onBack, onContact, currentUser }) => {
       {/* Mobile Sticky Bottom Bar */}
       {!isOwner && (
         <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t safe-area-bottom flex gap-3 md:hidden z-40" style={{ borderColor: COLORS.whiteBucks }}>
-          <button
-            onClick={() => {
-              if (currentUser?.isGuest) {
-                alert("請先登入以聯絡賣家！");
-                return;
-              }
-              onContact();
-            }}
-            className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2"
-          >
-            <MessageCircle size={18} /> {currentUser?.isGuest ? '登入後聯絡賣家' : '聯絡賣家'}
-          </button>
+          {(product.status === 'Reserved' || product.status === 'Sold') ? (
+            <button
+              disabled
+              className="flex-1 py-3 bg-gray-300 text-white rounded-xl font-bold shadow-none cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              售完
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (currentUser?.isGuest) {
+                  alert("請先登入以聯絡賣家！");
+                  return;
+                }
+                onContact();
+              }}
+              className="flex-1 py-3 bg-[#756256] text-white rounded-xl font-bold shadow-lg hover:bg-[#5D4E44] transition-colors flex items-center justify-center gap-2"
+            >
+              <MessageCircle size={18} /> {currentUser?.isGuest ? '登入後聯絡賣家' : '聯絡賣家'}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1638,6 +1665,15 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
                     {/* Image Area - Square Aspect Ratio */}
                     <div className="relative aspect-square bg-[#F9F7F5] overflow-hidden">
                       <img src={book.cover || book.imageBase64 || "https://dummyimage.com/400x400/eee/aaa"} alt={book.title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+
+                      {/* Sold Out Overlay */}
+                      {(book.status === 'Reserved' || book.status === 'Sold') && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+                          <div className="w-20 h-20 bg-black/70 rounded-full flex items-center justify-center border border-white/50 text-white font-bold tracking-widest text-sm transform -rotate-12 backdrop-blur-sm">
+                            已售完
+                          </div>
+                        </div>
+                      )}
                       {/* 商品狀態標籤：贈送/販售 */}
                       <div
                         className="absolute top-0 right-0 px-3 py-1.5 text-xs font-bold shadow-sm rounded-bl-lg z-10"
@@ -1770,6 +1806,107 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
  * TODO: 加入銷售統計報表
  * TODO: 實作批量管理功能
  */
+// ============================================
+// 組件：使用教學頁面
+// ============================================
+const TutorialPage = ({ onBack, user, onJoin }) => {
+  const sections = [
+    {
+      title: "如何買書？",
+      icon: <ShoppingCart className="w-6 h-6 text-green-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li>在首頁瀏覽或搜尋您需要的書籍。</li>
+          <li>點擊書籍進入詳情頁，確認書況與價格。</li>
+          <li>點擊「<strong>聯繫賣家</strong>」按鈕開啟聊天室。</li>
+          <li>在聊天室中與賣家確認面交「<strong>時間</strong>」與「<strong>地點</strong>」。</li>
+          <li>交易完成後，雙方皆可獲得 <strong>10 點書香幣</strong>！</li>
+        </ul>
+      )
+    },
+    {
+      title: "如何賣書？",
+      icon: <Store className="w-6 h-6 text-orange-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li>前往「<strong>個人專區</strong>」，點擊「<strong>上架書籍</strong>」頁籤。</li>
+          <li>填寫書籍名稱、售價、書況，並上傳封面照片。</li>
+          <li>點擊「確認上架」後，您的書籍就會出現在首頁。</li>
+          <li>請隨時留意「<strong>我的訊息</strong>」或 LINE 通知，以免錯過買家詢問！</li>
+          <li>若要下架商品，可在「我的書櫃」中點擊垃圾桶圖示。</li>
+        </ul>
+      )
+    },
+    {
+      title: "書香幣的使用",
+      icon: <Coins className="w-6 h-6 text-yellow-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li><strong>獲得書香幣：</strong>每日簽到 (+5)、完成交易 (+10)。</li>
+          <li><strong>使用書香幣：</strong>在「頭像商店」購買可愛的頭像。</li>
+          <li>更換頭像後，您的個人專區和聊天室都會顯示新造型喔！</li>
+        </ul>
+      )
+    },
+    {
+      title: "LINE 通知設定",
+      icon: <MessageCircle className="w-6 h-6 text-blue-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li>為了不錯過交易訊息，強烈建議綁定 LINE 通知。</li>
+          <li>在「個人專區」右上角點擊「<strong>綁定 LINE</strong>」。</li>
+          <li>取得 6 位數代碼後，直接發送給官方 LINE 帳號即可完成綁定。</li>
+        </ul>
+      )
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F9F7F5] pb-20" style={fontStyle}>
+      {/* Header */}
+      <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+              <ArrowRight size={20} className="rotate-180 text-[#9E9081]" />
+            </button>
+            <div className="font-bold text-lg text-[#756256] tracking-wide">平台使用教學</div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Content */}
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-[#756256] mb-2">歡迎來到<br />SchoolBook Exchange</h1>
+          <p className="text-[#9E9081]">讓校園二手書流動起來，知識永續循環。</p>
+        </div>
+
+        {sections.map((section, index) => (
+          <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8E3DF] animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gray-50 rounded-lg">{section.icon}</div>
+              <h3 className="text-lg font-bold text-[#756256]">{section.title}</h3>
+            </div>
+            {section.content}
+          </div>
+        ))}
+
+        <div className="bg-[#756256] text-white rounded-2xl p-6 text-center shadow-lg mt-8">
+          <h3 className="font-bold text-lg mb-2">準備好了嗎？</h3>
+          <p className="text-sm opacity-90 mb-4">立即開始您的二手書旅程！</p>
+          <button
+            onClick={user?.isGuest ? onJoin : onBack}
+            className="px-8 py-3 bg-white text-[#756256] rounded-xl font-bold hover:bg-gray-100 transition-colors shadow-sm"
+          >
+            {user?.isGuest ? "我想加入" : "返回個人專區"}
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+};
+
 const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, currentAvatarId, onPurchase, onEquip }) => {
   const [tab, setTab] = useState('shelf'); // 'upload', 'shelf', 'store'
   const INITIAL_MY_LISTINGS = []; // Or pass as prop if needed
@@ -1889,12 +2026,9 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
     const bookId = bookToDelete;
 
     // Check status locally (from myListings)
-    const book = myListings.find(b => b.id === bookId);
-    if (book && (book.status === 'Reserved' || book.status === 'Sold')) {
-      alert("此書籍正在交易中或已售出，無法下架！");
-      setBookToDelete(null);
-      return;
-    }
+    // No restrictions: User can delete anytime.
+    // const book = myListings.find(b => b.id === bookId);
+    // if (book && book.status === 'Sold') { ... }
 
     try {
       await bookService.deleteBook(bookId);
@@ -1937,6 +2071,12 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3"><button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100"><ArrowRight size={20} className="rotate-180 text-[#9E9081]" /></button><div className="font-bold text-lg tracking-wide">個人專區</div></div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate('tutorial')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-[#756256] border border-[#E8E3DF] hover:bg-gray-50 shadow-sm transition-colors"
+            >
+              <HelpCircle size={14} /> 使用教學
+            </button>
             {user.isLineNotifyEnabled ? (
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 text-xs font-bold rounded-md border border-green-200 cursor-default">
@@ -1979,7 +2119,9 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
         {/* Tabs */}
         <div className="flex border rounded-lg overflow-hidden bg-white p-1" style={{ borderColor: COLORS.whiteBucks }}>
           <button onClick={() => setTab('shelf')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${tab === 'shelf' ? 'bg-[#F9F7F5] text-[#756256]' : 'text-gray-400 hover:text-gray-600'}`}>我的書櫃</button>
-          <button onClick={() => setTab('upload')} className="flex-1 py-2 text-sm font-bold rounded-md transition-all bg-[#A58976] text-white shadow-sm ring-1 ring-white/20">上架書籍</button>
+          {!user.isGuest && (
+            <button onClick={() => setTab('upload')} className="flex-1 py-2 text-sm font-bold rounded-md transition-all bg-[#A58976] text-white shadow-sm ring-1 ring-white/20">上架書籍</button>
+          )}
           <button onClick={() => setTab('store')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${tab === 'store' ? 'bg-[#F9F7F5] text-[#756256]' : 'text-gray-400 hover:text-gray-600'}`}>頭像商店</button>
         </div>
 
@@ -3182,6 +3324,7 @@ const App = () => {
           onEquip={handleEquipAvatar}
         />
       );
+      case 'tutorial': return <TutorialPage onBack={() => navigate(currentUser?.isGuest ? 'home' : 'profile')} user={currentUser} onJoin={handleLogout} />;
       default: return <div>404</div>;
     }
   };
@@ -3191,7 +3334,7 @@ const App = () => {
       <div className="flex-1">
         {renderPage()}
       </div>
-      {currentPage !== 'login' && <Footer />}
+      {currentPage !== 'login' && <Footer onNavigate={navigate} />}
       {showCheckInModal && <CheckInModal />}
       {showPonyGiftModal && <PonyGiftModal />}
       {activeChat && (
@@ -3252,9 +3395,10 @@ const App = () => {
   );
 };
 
-const Footer = () => (
+const Footer = ({ onNavigate }) => (
   <footer className="bg-[#756256] text-[#E8E3DF] py-12 px-6 mt-12 border-t border-white/10">
-    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-8 text-center md:text-left">
+      {/* 1. 品牌理念 */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 justify-center md:justify-start">
           <BookOpen size={24} className="text-[#A58976]" />
@@ -3266,7 +3410,8 @@ const Footer = () => (
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 justify-center">
+      {/* 2. 平台概況 */}
+      <div className="flex flex-col gap-3 justify-start md:mt-0">
         <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">平台概況</div>
         <div className="text-xs opacity-80 flex items-center gap-2 justify-center md:justify-start hover:opacity-100 transition-opacity cursor-default">
           <ShieldCheck size={14} /> 安全交易保障
@@ -3279,7 +3424,22 @@ const Footer = () => (
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 justify-center">
+      {/* 3. [NEW] 幫助中心 / 客戶服務 */}
+      <div className="flex flex-col gap-3 justify-start md:mt-0">
+        <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">幫助中心 / 客戶服務</div>
+        <button onClick={() => onNavigate && onNavigate('tutorial')} className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start hover:text-white text-left">
+          <span className="w-1 h-1 bg-[#A58976] rounded-full"></span> 新手上路
+        </button>
+        <button onClick={() => onNavigate && onNavigate('tutorial')} className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start hover:text-white text-left">
+          <span className="w-1 h-1 bg-[#A58976] rounded-full"></span> 交易流程教學
+        </button>
+        <button onClick={() => onNavigate && onNavigate('tutorial')} className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start hover:text-white text-left">
+          <span className="w-1 h-1 bg-[#A58976] rounded-full"></span> LINE 通知設定
+        </button>
+      </div>
+
+      {/* 4. 聯絡我們 */}
+      <div className="flex flex-col gap-3 justify-start md:mt-0">
         <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">聯絡我們</div>
         <div className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start">
           <MessageCircle size={14} /> LINE ID : @649fkijr

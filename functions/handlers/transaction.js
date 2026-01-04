@@ -17,7 +17,7 @@
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors")({origin: true});
+const cors = require("cors")({ origin: true });
 const emailService = require("../services/email-service");
 
 // ============================================
@@ -41,10 +41,10 @@ const emailService = require("../services/email-service");
 exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     console.log("收到交易請求內容:", req.body);
-    const {bookId, buyerId, agreedPrice} = req.body || {};
+    const { bookId, buyerId, agreedPrice } = req.body || {};
 
     if (!bookId || !buyerId) {
-      return res.status(400).send({message: "缺少必要參數"});
+      return res.status(400).send({ message: "缺少必要參數" });
     }
 
     const db = admin.firestore();
@@ -56,25 +56,24 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
 
         if (!bookDoc.exists) throw new Error("找不到該書籍");
 
-        if (bookDoc.data().status !== "Available") {
+        if (bookDoc.data().status === "Reserved" || bookDoc.data().status === "Sold") {
           // [New] Check if user is participant of the active transaction
           if (bookDoc.data().status === "Reserved") {
             const transQuery = db.collection("transactions")
-                .where("bookId", "==", bookId)
-                .where("status", "==", "Pending")
-                .limit(1);
-            const transSnap = await t.get(transQuery);
-
-            if (!transSnap.empty) {
-              const transDoc = transSnap.docs[0];
-              const transData = transDoc.data();
-              // Allow Buyer or Seller to re-enter
-              if (buyerId === transData.buyerId || buyerId === transData.sellerId) {
-                return {existingId: transDoc.id};
-              }
-            }
+              .where("bookId", "==", bookId)
+              //.where("status", "==", "Pending") // Pending might be multiple now?
+              // Actually if Reserved, it means Invoice sent. So only that buyer should enter.
+              .where("buyerId", "==", buyerId)
+              .limit(1);
+            // Logic complexity: If Reserved, it means Invoice sent to SOMEONE.
+            // Only that someone should be able to re-enter?
+            // But here we are creating a NEW transaction?
+            // If book is Reserved, we should probably block new transactions.
+            // Existing participants use client side logic to open existing chat.
+            // This endpoint creates NEW transaction.
+            // So if Reserved/Sold, block.
           }
-          throw new Error("書籍已被預訂");
+          throw new Error("書籍已在此階段保留或售出");
         }
 
         const bookData = bookDoc.data();
@@ -90,8 +89,8 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
         const lineUserId = sellerData.lineUserId;
         console.log(`Checking Line Notify for seller ${sellerId}: ${shouldNotifyLine}, LID: ${lineUserId}`);
 
-        // 2. 更新書籍狀態 (WRITE)
-        t.update(bookRef, {status: "Reserved", reservedBy: buyerId});
+        // 2. [Modified] Don't lock book status yet. Allow multiple negotiations.
+        // t.update(bookRef, {status: "Reserved", reservedBy: buyerId});
 
         // Send LINE Notification if applicable
         if (shouldNotifyLine && lineUserId) {
@@ -115,23 +114,23 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
           // Store notification status snapshot if needed, or just relied on logging for now
           isLineNotifyTriggered: shouldNotifyLine,
         });
-        return {newId: transRef.id}; // Return new ID
+        return { newId: transRef.id }; // Return new ID
       });
 
       if (result && result.existingId) {
         console.log("✅ 恢復現有交易:", result.existingId);
-        return res.status(200).send({success: true, transactionId: result.existingId, message: "進入聊天室"});
+        return res.status(200).send({ success: true, transactionId: result.existingId, message: "進入聊天室" });
       }
       if (result && result.newId) {
         console.log("✅ 建立新交易:", result.newId);
         // Need to handle notification here if we moved it out? No, logic is simple enough inside.
-        return res.status(200).send({success: true, transactionId: result.newId, message: "預訂成功"});
+        return res.status(200).send({ success: true, transactionId: result.newId, message: "預訂成功" });
       }
       // Should not happen
-      res.status(200).send({success: true, message: "預訂成功"});
+      res.status(200).send({ success: true, message: "預訂成功" });
     } catch (e) {
       console.error("交易執行失敗，具體原因:", e.message);
-      res.status(500).send({message: e.message});
+      res.status(500).send({ message: e.message });
     }
   });
 });
@@ -139,167 +138,168 @@ exports.handleBookTransaction = functions.https.onRequest(async (req, res) => {
 // 3. 監聽交易更新：獎懲邏輯 + 發送通知
 // 3.1 New Order Notification (Improved)
 exports.onTransactionCreate = functions.firestore
-    .document("transactions/{transactionId}")
-    .onCreate(async (snap, context) => {
+  .document("transactions/{transactionId}")
+  .onCreate(async (snap, context) => {
     // Disabled: Notification moved to onMessageCreate (First Message)
-      console.log("Transaction created:", context.params.transactionId);
-    });
+    console.log("Transaction created:", context.params.transactionId);
+  });
 
 exports.onTransactionUpdate = functions.firestore
-    .document("transactions/{transactionId}")
-    .onUpdate(async (change, context) => {
-      const before = change.before.data();
-      const after = change.after.data();
-      if (!before || !after) return null;
+  .document("transactions/{transactionId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    if (!before || !after) return null;
 
-      const oldStatus = before.status;
-      const newStatus = after.status;
-      const {sellerId, buyerId, bookTitle} = after;
+    const oldStatus = before.status;
+    const newStatus = after.status;
+    const { sellerId, buyerId, bookTitle } = after;
 
-      const db = admin.firestore();
+    const db = admin.firestore();
 
 
-      // --- [NEW] Sync Book Status ---
-      const bookId = after.bookId;
-      if (bookId) {
-        const bookRef = db.collection("books").doc(bookId);
-        // 1. Invoice Sent -> Reserved
-        if (!before.invoiceSentAt && after.invoiceSentAt) {
-          await bookRef.update({status: "Reserved"});
-        }
-        // 2. Completed -> Sold
-        if (oldStatus !== "Completed" && newStatus === "Completed") {
-          await bookRef.update({status: "Sold"});
-        }
-        // 3. Failed/Canceled -> Suspended (Delisted as requested)
-        if ((oldStatus !== "Failed" && newStatus === "Failed") || (oldStatus !== "Canceled" && newStatus === "Canceled")) {
-        // User requested to delist the item even if failed.
-          await bookRef.update({status: "Suspended"});
-        }
-      }
-
-      // --- [NEW] Credit Score Logic for Failure ---
-      if (newStatus === "Failed" && oldStatus !== "Failed") {
-        const failedBy = after.failedBy;
-        if (failedBy) {
-          console.log(`Deducting credit for user ${failedBy}`);
-          await updateScore(failedBy, -5, true); // Deduct 5 points
-        }
-      }
-
-      // --- [NEW] 偵測明細開立（賣家發送明細訊息） ---
+    // --- [NEW] Sync Book Status ---
+    const bookId = after.bookId;
+    if (bookId) {
+      const bookRef = db.collection("books").doc(bookId);
+      // 1. Invoice Sent -> Reserved
       if (!before.invoiceSentAt && after.invoiceSentAt) {
+        await bookRef.update({ status: "Reserved" });
+      }
+      // 2. Completed -> Sold
+      if (oldStatus !== "Completed" && newStatus === "Completed") {
+        await bookRef.update({ status: "Sold" });
+      }
+      // 3. Failed/Canceled -> Suspended (Delisted as requested)
+      if ((oldStatus !== "Failed" && newStatus === "Failed") || (oldStatus !== "Canceled" && newStatus === "Canceled")) {
+        // User requested to delist the item even if failed.
+        await bookRef.update({ status: "Suspended" });
+      }
+    }
+
+    // --- [NEW] Credit Score Logic for Failure ---
+    if (newStatus === "Failed" && oldStatus !== "Failed") {
+      const failedBy = after.failedBy;
+      if (failedBy) {
+        console.log(`Deducting credit for user ${failedBy}`);
+        await updateScore(failedBy, -5, true); // Deduct 5 points
+      }
+    }
+
+    // --- [NEW] 偵測明細開立（賣家發送明細訊息） ---
+    if (!before.invoiceSentAt && after.invoiceSentAt) {
       // ... (Existing Invoice Logic)
-        console.log("🧾 Invoice detected for transaction:", context.params.transactionId);
+      console.log("🧾 Invoice detected for transaction:", context.params.transactionId);
 
-        // A. 發送站內通知 (In-App)
-        const notifContent = "交易已建立！賣家已開立明細，請確認內容並準備面交。";
-        const notifBatch = db.batch();
+      // A. 發送站內通知 (In-App)
+      const notifContent = "交易已建立！賣家已開立明細，請確認內容並準備面交。";
+      const notifBatch = db.batch();
 
-        const buyerNotifRef = db.collection("notifications").doc();
-        notifBatch.set(buyerNotifRef, {
-          userId: buyerId,
-          content: notifContent,
-          type: "system",
-          isRead: false,
-          timestamp: new Date(),
-        });
+      const buyerNotifRef = db.collection("notifications").doc();
+      notifBatch.set(buyerNotifRef, {
+        userId: buyerId,
+        content: notifContent,
+        type: "system",
+        isRead: false,
+        timestamp: new Date(),
+      });
 
-        const sellerNotifRef = db.collection("notifications").doc();
-        notifBatch.set(sellerNotifRef, {
-          userId: sellerId,
-          content: notifContent,
-          type: "system",
-          isRead: false,
-          timestamp: new Date(),
-        });
+      const sellerNotifRef = db.collection("notifications").doc();
+      notifBatch.set(sellerNotifRef, {
+        userId: sellerId,
+        content: notifContent,
+        type: "system",
+        isRead: false,
+        timestamp: new Date(),
+      });
 
+      try {
+        await notifBatch.commit();
+        console.log("✅ In-App Notification sent for Invoice");
+      } catch (e) {
+        console.error("❌ Failed to send In-App Notification:", e);
+      }
+
+      // B. 呼叫 LINE bot handler 發送明細通知
+      const lineBotHandlers = require("./line-bot");
+      try {
+        await lineBotHandlers.sendInvoiceNotification({
+          id: context.params.transactionId,
+          ...after,
+        }, db);
+
+        console.log("✅ Invoice notification sent via LINE");
+      } catch (e) {
+        console.error("❌ Failed to send invoice notification:", e);
+      }
+    }
+
+    // --- 輔助函式：更新信用分數與書香幣 ---
+    const updateScore = async (userId, scoreChange, isCancel = false) => {
+      const userRef = db.collection("users").doc(userId);
+      const userDoc = await userRef.get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const updates = {
+          creditScore: (userData.creditScore || 100) + scoreChange,
+          coins: (userData.coins || 0) + scoreChange, // [NEW] 同步更新書香幣
+        };
+        if (isCancel) {
+          updates.canceledTransactions = (userData.canceledTransactions || 0) + 1;
+        } else {
+          updates.completedTransactions = (userData.completedTransactions || 0) + 1;
+          updates.totalTransactions = (userData.totalTransactions || 0) + 1;
+        }
+        await userRef.update(updates);
+        return userData.email;
+      }
+      return null;
+    };
+
+    // --- 情境 A：交易完成 (加分 + 發信) ---
+    if (oldStatus === "Pending" && newStatus === "Completed") {
+      const sellerEmail = await updateScore(sellerId, 10);
+      await updateScore(buyerId, 10);
+
+      if (sellerEmail) {
+        await emailService.sendTransactionNotification(sellerEmail, bookTitle, 10);
+      }
+
+      // [NEW] 發送交易完成的 LINE 通知
+      const lineService = require("../services/line-service");
+
+      // 通知賣家
+      const sellerDoc = await db.collection("users").doc(sellerId).get();
+      if (sellerDoc.exists && sellerDoc.data().lineUserId) {
         try {
-          await notifBatch.commit();
-          console.log("✅ In-App Notification sent for Invoice");
+          await lineService.pushMessage(
+            sellerDoc.data().lineUserId,
+            `🎉 交易完成！\n\n書籍「${bookTitle}」的交易已順利完成。\n您獲得了 +10 書香幣與信用積分！`,
+          );
         } catch (e) {
-          console.error("❌ Failed to send In-App Notification:", e);
+          console.error("Failed to send completion LINE to seller:", e);
         }
+      }
 
-        // B. 呼叫 LINE bot handler 發送明細通知
-        const lineBotHandlers = require("./line-bot");
+      // 通知買家
+      const buyerDoc = await db.collection("users").doc(buyerId).get();
+      if (buyerDoc.exists && buyerDoc.data().lineUserId) {
         try {
-          await lineBotHandlers.sendInvoiceNotification({
-            id: context.params.transactionId,
-            ...after,
-          }, db);
-
-          console.log("✅ Invoice notification sent via LINE");
+          await lineService.pushMessage(
+            buyerDoc.data().lineUserId,
+            `🎉 交易完成！\n\n書籍「${bookTitle}」的交易已順利完成。\n您獲得了 +10 書香幣與信用積分！\n\n感謝使用校園二手書循環平台！`,
+          );
         } catch (e) {
-          console.error("❌ Failed to send invoice notification:", e);
+          console.error("Failed to send completion LINE to buyer:", e);
         }
       }
-
-      // --- 輔助函式：更新信用分數 ---
-      const updateScore = async (userId, scoreChange, isCancel = false) => {
-        const userRef = db.collection("users").doc(userId);
-        const userDoc = await userRef.get();
-        if (userDoc.exists) {
-          const userData = userDoc.data();
-          const updates = {
-            creditScore: (userData.creditScore || 100) + scoreChange,
-          };
-          if (isCancel) {
-            updates.canceledTransactions = (userData.canceledTransactions || 0) + 1;
-          } else {
-            updates.completedTransactions = (userData.completedTransactions || 0) + 1;
-            updates.totalTransactions = (userData.totalTransactions || 0) + 1;
-          }
-          await userRef.update(updates);
-          return userData.email;
-        }
-        return null;
-      };
-
-      // --- 情境 A：交易完成 (加分 + 發信) ---
-      if (oldStatus === "Pending" && newStatus === "Completed") {
-        const sellerEmail = await updateScore(sellerId, 5);
-        await updateScore(buyerId, 5);
-
-        if (sellerEmail) {
-          await emailService.sendTransactionNotification(sellerEmail, bookTitle, 5);
-        }
-
-        // [NEW] 發送交易完成的 LINE 通知
-        const lineService = require("../services/line-service");
-
-        // 通知賣家
-        const sellerDoc = await db.collection("users").doc(sellerId).get();
-        if (sellerDoc.exists && sellerDoc.data().lineUserId) {
-          try {
-            await lineService.pushMessage(
-                sellerDoc.data().lineUserId,
-                `🎉 交易完成！\n\n書籍「${bookTitle}」的交易已順利完成。\n您獲得了 +5 信用積分！`,
-            );
-          } catch (e) {
-            console.error("Failed to send completion LINE to seller:", e);
-          }
-        }
-
-        // 通知買家
-        const buyerDoc = await db.collection("users").doc(buyerId).get();
-        if (buyerDoc.exists && buyerDoc.data().lineUserId) {
-          try {
-            await lineService.pushMessage(
-                buyerDoc.data().lineUserId,
-                `🎉 交易完成！\n\n書籍「${bookTitle}」的交易已順利完成。\n您獲得了 +5 信用積分！\n\n感謝使用校園二手書循環平台！`,
-            );
-          } catch (e) {
-            console.error("Failed to send completion LINE to buyer:", e);
-          }
-        }
-      }
-      // --- 情境 B：交易取消 (扣分) ---
-      else if (oldStatus === "Pending" && newStatus === "Canceled") {
-        await updateScore(sellerId, -10, true);
-        await updateScore(buyerId, -10, true);
-      }
-    });
+    }
+    // --- 情境 B：交易取消 (扣分) ---
+    else if (oldStatus === "Pending" && newStatus === "Canceled") {
+      await updateScore(sellerId, -10, true);
+      await updateScore(buyerId, -10, true);
+    }
+  });
 
 // 4. 更新交易狀態 (Confirm / Cancel)
 exports.updateTransactionStatus = functions.https.onCall(async (data, context) => {
@@ -307,7 +307,7 @@ exports.updateTransactionStatus = functions.https.onCall(async (data, context) =
     throw new functions.https.HttpsError("unauthenticated", "請先登入帳號");
   }
 
-  const {transactionId, newStatus} = data;
+  const { transactionId, newStatus } = data;
   const uid = context.auth.uid;
 
   if (!["Completed", "Canceled"].includes(newStatus)) {
@@ -352,18 +352,18 @@ exports.updateTransactionStatus = functions.https.onCall(async (data, context) =
         canceledBy: newStatus === "Canceled" ? uid : null,
       });
 
-      const {FieldValue} = require("firebase-admin/firestore");
+      const { FieldValue } = require("firebase-admin/firestore");
 
       // ... (existing code)
 
       // 如果是取消，也要把書籍狀態改回 Available
       if (newStatus === "Canceled") {
         const bookRef = db.collection("books").doc(trans.bookId);
-        t.update(bookRef, {status: "Available", reservedBy: FieldValue.delete()});
+        t.update(bookRef, { status: "Available", reservedBy: FieldValue.delete() });
       }
     });
 
-    return {success: true, message: `交易已${newStatus === "Completed" ? "完成" : "取消"}`};
+    return { success: true, message: `交易已${newStatus === "Completed" ? "完成" : "取消"}` };
   } catch (e) {
     console.error("更新交易失敗:", e);
     throw e instanceof functions.https.HttpsError ? e : new functions.https.HttpsError("internal", e.message);
@@ -374,7 +374,7 @@ exports.updateTransactionStatus = functions.https.onCall(async (data, context) =
 exports.requestReschedule = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
 
-  const {transactionId, newTime, reason} = data;
+  const { transactionId, newTime, reason } = data;
   const uid = context.auth.uid;
   const db = admin.firestore();
   const transRef = db.collection("transactions").doc(transactionId);
@@ -419,7 +419,7 @@ exports.requestReschedule = functions.https.onCall(async (data, context) => {
         },
       });
     });
-    return {success: true};
+    return { success: true };
   } catch (e) {
     throw e instanceof functions.https.HttpsError ? e : new functions.https.HttpsError("internal", e.message);
   }
@@ -429,7 +429,7 @@ exports.requestReschedule = functions.https.onCall(async (data, context) => {
 exports.respondToReschedule = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
 
-  const {transactionId, response} = data; // 'accept' or 'reject'
+  const { transactionId, response } = data; // 'accept' or 'reject'
   const uid = context.auth.uid;
   const db = admin.firestore();
   const transRef = db.collection("transactions").doc(transactionId);
@@ -452,7 +452,7 @@ exports.respondToReschedule = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("permission-denied", "非交易當事人");
       }
 
-      const {FieldValue} = require("firebase-admin/firestore");
+      const { FieldValue } = require("firebase-admin/firestore");
 
       if (response === "accept") {
         const newCount = (trans.rescheduleCount || 0) + 1;
@@ -467,7 +467,7 @@ exports.respondToReschedule = functions.https.onCall(async (data, context) => {
         });
       }
     });
-    return {success: true};
+    return { success: true };
   } catch (e) {
     throw e instanceof functions.https.HttpsError ? e : new functions.https.HttpsError("internal", e.message);
   }
@@ -477,7 +477,7 @@ exports.respondToReschedule = functions.https.onCall(async (data, context) => {
 exports.confirmTransactionTime = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "請先登入");
 
-  const {transactionId} = data;
+  const { transactionId } = data;
   const uid = context.auth.uid;
   const db = admin.firestore();
   const transRef = db.collection("transactions").doc(transactionId);
@@ -496,9 +496,9 @@ exports.confirmTransactionTime = functions.https.onCall(async (data, context) =>
         throw new functions.https.HttpsError("failed-precondition", "時間已確認");
       }
 
-      t.update(transRef, {isTimeAgreed: true});
+      t.update(transRef, { isTimeAgreed: true });
     });
-    return {success: true};
+    return { success: true };
   } catch (e) {
     throw e instanceof functions.https.HttpsError ? e : new functions.https.HttpsError("internal", e.message);
   }
@@ -506,51 +506,51 @@ exports.confirmTransactionTime = functions.https.onCall(async (data, context) =>
 
 // 8. 監聽聊天訊息建立：發送首條訊息通知
 exports.onMessageCreate = functions.firestore
-    .document("transactions/{transactionId}/messages/{messageId}")
-    .onCreate(async (snap, context) => {
-      const msgData = snap.data();
-      const transactionId = context.params.transactionId;
-      const db = admin.firestore();
-      const transRef = db.collection("transactions").doc(transactionId);
+  .document("transactions/{transactionId}/messages/{messageId}")
+  .onCreate(async (snap, context) => {
+    const msgData = snap.data();
+    const transactionId = context.params.transactionId;
+    const db = admin.firestore();
+    const transRef = db.collection("transactions").doc(transactionId);
 
-      // Check Transaction Flag
-      const transDoc = await transRef.get();
-      if (!transDoc.exists) return;
-      const transData = transDoc.data();
+    // Check Transaction Flag
+    const transDoc = await transRef.get();
+    if (!transDoc.exists) return;
+    const transData = transDoc.data();
 
-      // Prevent duplicate notifications
-      if (transData.isFirstMessageNotified) return;
+    // Prevent duplicate notifications
+    if (transData.isFirstMessageNotified) return;
 
-      // Only notify if message sent by Buyer
-      // Wait, is 'buyerId' guaranteed? Yes.
-      if (msgData.senderId !== transData.buyerId) return;
+    // Only notify if message sent by Buyer
+    // Wait, is 'buyerId' guaranteed? Yes.
+    if (msgData.senderId !== transData.buyerId) return;
 
-      console.log(`[Message Trigger] First message from Buyer ${msgData.senderId} in ${transactionId}`);
+    console.log(`[Message Trigger] First message from Buyer ${msgData.senderId} in ${transactionId}`);
 
-      // Mark as notified immediately (Optimistic)
-      try {
-        await transRef.update({isFirstMessageNotified: true});
-      } catch (e) {
-        console.log("Race condition preventing double notify", e);
-        return;
-      }
+    // Mark as notified immediately (Optimistic)
+    try {
+      await transRef.update({ isFirstMessageNotified: true });
+    } catch (e) {
+      console.log("Race condition preventing double notify", e);
+      return;
+    }
 
-      // Send Notification
-      const sellerRef = db.collection("users").doc(transData.sellerId);
-      const sellerDoc = await sellerRef.get();
-      if (sellerDoc.exists) {
-        const sellerData = sellerDoc.data();
-        if (sellerData.isLineNotifyEnabled && sellerData.lineUserId) {
-          const lineService = require("../services/line-service");
-          const msg = `📦 新訂單通知！\n\n買家已預訂您的書籍並傳送了訊息：\n「${msgData.content || "圖片/貼圖"}」\n\n請盡快開啟網頁回覆。`;
-          try {
-            await lineService.pushMessage(sellerData.lineUserId, msg);
-            console.log("First Message Notification sent to", transData.sellerId);
-          } catch (e) {
-            console.error("Failed to send First Message LINE:", e);
-          }
-        } else {
-          console.log("Seller not bound or disabled LINE notify");
+    // Send Notification
+    const sellerRef = db.collection("users").doc(transData.sellerId);
+    const sellerDoc = await sellerRef.get();
+    if (sellerDoc.exists) {
+      const sellerData = sellerDoc.data();
+      if (sellerData.isLineNotifyEnabled && sellerData.lineUserId) {
+        const lineService = require("../services/line-service");
+        const msg = `📦 新訂單通知！\n\n買家已預訂您的書籍並傳送了訊息：\n「${msgData.content || "圖片/貼圖"}」\n\n請盡快開啟網頁回覆。`;
+        try {
+          await lineService.pushMessage(sellerData.lineUserId, msg);
+          console.log("First Message Notification sent to", transData.sellerId);
+        } catch (e) {
+          console.error("Failed to send First Message LINE:", e);
         }
+      } else {
+        console.log("Seller not bound or disabled LINE notify");
       }
-    });
+    }
+  });

@@ -36,7 +36,7 @@ exports.deleteBook = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "請先登入");
   }
 
-  const {bookId} = data;
+  const { bookId } = data;
   if (!bookId) {
     throw new functions.https.HttpsError("invalid-argument", "缺少 Book ID");
   }
@@ -67,23 +67,28 @@ exports.deleteBook = functions.https.onCall(async (data, context) => {
     // - 交易狀態包括：Pending（待確認）、Invoiced（已開立明細）
     // - 如果有，提示使用者先完成或取消交易
     const activeTransactions = await db.collection("transactions")
-        .where("bookId", "==", bookId)
-        .where("status", "in", ["Pending", "Invoiced"])
-        .limit(1) // 只需要知道是否存在即可
-        .get();
+      .where("bookId", "==", bookId)
+      .where("status", "in", ["Pending", "Invoiced"])
+      .limit(1) // 只需要知道是否存在即可
+      .get();
 
     if (!activeTransactions.empty) {
-      // 有進行中的交易，拒絕刪除
-      throw new functions.https.HttpsError(
-          "failed-precondition",
-          "此書籍有進行中的交易，請先完成或取消交易後再刪除。\n\n" +
-        "您可以在「我的交易」中查看交易詳情。",
-      );
+      // 有進行中的交易，將其標記為失敗 (Failed) 並允許刪除
+      // 不設定 failedBy 以避免觸發扣分邏輯 (除非有明確需求)
+      const batch = db.batch();
+      activeTransactions.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          status: "Failed",
+          failureReason: "賣家已下架此商品",
+          endedAt: new Date(),
+        });
+      });
+      await batch.commit();
     }
 
     // Pseudocode: 執行刪除
     await bookRef.delete();
-    return {success: true};
+    return { success: true };
   } catch (error) {
     console.error("Delete book error:", error);
     throw error;
