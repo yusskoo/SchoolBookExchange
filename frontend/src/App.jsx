@@ -26,7 +26,7 @@ import {
   Heart, MessageCircle, Share2, Star, AlertCircle, ShoppingCart,
   User, CheckCircle, MapPin, ThumbsUp, Send, Search, Bell, Eye,
   BookOpen, Filter, ArrowRight, Menu, Home, Lock, Mail, ChevronDown, Camera,
-  Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight, ExternalLink, StarHalf
+  Plus, Image as ImageIcon, Trash2, Clock, DollarSign, FileText, AlertTriangle, X, Gift, Repeat, LogOut, LayoutGrid, Tag, Info, HelpCircle, ShieldCheck, Smile, Flame, Book, Sparkles, HandMetal, Calendar, Zap, Coins, Settings, ChevronLeft, Palette, Store, ChevronRight, ExternalLink, StarHalf, UserPlus
 } from 'lucide-react';
 import { authService } from './services/auth-service';
 import { bookService } from './services/book-service';
@@ -1809,42 +1809,20 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
 // ============================================
 // 組件：使用教學頁面
 // ============================================
+
 const TutorialPage = ({ onBack, user, onJoin }) => {
   const sections = [
     {
-      title: "如何買書？",
-      icon: <ShoppingCart className="w-6 h-6 text-green-500" />,
+      title: "如何加入？",
+      icon: <UserPlus className="w-6 h-6 text-purple-500" />,
       content: (
         <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
-          <li>在首頁瀏覽或搜尋您需要的書籍。</li>
-          <li>點擊書籍進入詳情頁，確認書況與價格。</li>
-          <li>點擊「<strong>聯繫賣家</strong>」按鈕開啟聊天室。</li>
-          <li>在聊天室中與賣家確認面交「<strong>時間</strong>」與「<strong>地點</strong>」。</li>
-          <li>交易完成後，雙方皆可獲得 <strong>10 點書香幣</strong>！</li>
-        </ul>
-      )
-    },
-    {
-      title: "如何賣書？",
-      icon: <Store className="w-6 h-6 text-orange-500" />,
-      content: (
-        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
-          <li>前往「<strong>個人專區</strong>」，點擊「<strong>上架書籍</strong>」頁籤。</li>
-          <li>填寫書籍名稱、售價、書況，並上傳封面照片。</li>
-          <li>點擊「確認上架」後，您的書籍就會出現在首頁。</li>
-          <li>請隨時留意「<strong>我的訊息</strong>」或 LINE 通知，以免錯過買家詢問！</li>
-          <li>若要下架商品，可在「我的書櫃」中點擊垃圾桶圖示。</li>
-        </ul>
-      )
-    },
-    {
-      title: "書香幣的使用",
-      icon: <Coins className="w-6 h-6 text-yellow-500" />,
-      content: (
-        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
-          <li><strong>獲得書香幣：</strong>每日簽到 (+5)、完成交易 (+10)。</li>
-          <li><strong>使用書香幣：</strong>在「頭像商店」購買可愛的頭像。</li>
-          <li>更換頭像後，您的個人專區和聊天室都會顯示新造型喔！</li>
+          <li>為了打造安全的交易環境，此平台僅開放正心中學校內師生加入。</li>
+          <li>注意：點擊「認證信箱」後，系統會發送認證郵件到您的信箱。</li>
+          <li>請注意可能會出現在垃圾郵件夾。</li>
+          <li className="list-none pt-2">
+            <img src="/tutorial/垃圾郵件.png" alt="垃圾郵件範例" className="w-full h-auto rounded-lg shadow-sm border border-gray-100" />
+          </li>
         </ul>
       )
     },
@@ -1854,11 +1832,58 @@ const TutorialPage = ({ onBack, user, onJoin }) => {
       content: (
         <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
           <li>為了不錯過交易訊息，強烈建議綁定 LINE 通知。</li>
-          <li>在「個人專區」右上角點擊「<strong>綁定 LINE</strong>」。</li>
-          <li>取得 6 位數代碼後，直接發送給官方 LINE 帳號即可完成綁定。</li>
+          <li>在「個人專區」右上角點擊「綁定 LINE」。</li>
+          <li>取得 6 位數代碼後，直接發送給 <a href="https://line.me/R/ti/p/@649fkijr">官方 LINE 帳號</a> 即可完成綁定。</li>
+          <li className="list-none pt-2">
+            <img src="/tutorial/輸入六碼.jpeg" alt="輸入六碼範例" className="w-full h-auto rounded-lg shadow-sm border border-gray-100" />
+          </li>
+          <li><span className="text-red-500 font-bold">注意：每次發送訊息後，請耐心等待 5 秒才會收到回覆。</span></li>
+          <li>一個帳號僅能綁定一個 LINE 帳號，若想解除綁定請點擊「解除」。</li>
+        </ul>
+      )
+    },
+    {
+      title: "如何買書？",
+      icon: <ShoppingCart className="w-6 h-6 text-green-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li>在首頁瀏覽或搜尋您需要的書籍。</li>
+          <li>點擊書籍進入詳情頁，確認書況與價格。</li>
+          <li>點擊「<strong>聯繫賣家/預定</strong>」按鈕開啟聊天室。</li>
+          <li>在聊天室中與賣家確認面交「<strong>時間</strong>」與「<strong>地點</strong>」。</li>
+          <li>當賣家「<strong>開立明細</strong>」，代表交易成立，您將會在LINE收到一份交易明細。</li>
+          <li className="list-none pt-2">
+            <img src="/tutorial/交易明細.jpeg" alt="交易明細範例" className="w-full h-auto rounded-lg shadow-sm border border-gray-100" />
+          </li>
+          <li>系統將在面交時間的24小時前發送LINE提醒通知。</li>
+          <li>面交完成後，記得在LINE回報「<strong>交易成功或失敗</strong>」按鈕。</li>
+        </ul>
+      )
+    },
+    {
+      title: "如何上架書籍？",
+      icon: <Store className="w-6 h-6 text-orange-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li>前往「<strong>個人專區</strong>」，點擊「<strong>上架書籍</strong>」。</li>
+          <li>上傳封面照片，並填寫書籍名稱、價格、書況及描述。</li>
+          <li>描述欄位可以寫書籍介紹、詳細書況(有畫筆記、寫了兩回等)</li>
+          <li>請隨時留意「<strong>我的訊息</strong>」或 LINE 通知，以免錯過買家詢問！</li>
+          <li>若要下架商品，可在「<strong>我的書櫃</strong>」中點擊垃圾桶圖示。</li>
+        </ul>
+      )
+    },
+    {
+      title: "書香幣的使用",
+      icon: <Coins className="w-6 h-6 text-yellow-500" />,
+      content: (
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li><strong>獲得書香幣：</strong>每日簽到 (+5)、完成交易 (+10)。</li>
+          <li><strong>使用書香幣：</strong>在「頭像商店」購買可愛頭像。</li>
         </ul>
       )
     }
+
   ];
 
   return (
@@ -2294,9 +2319,14 @@ const ProfilePage = ({ onBack, onNavigate, user, onLogout, coins, myAvatars, cur
               <label className="block text-sm font-bold text-[#9E9081] mb-2">描述 (選填)</label>
               <textarea
                 value={sellForm.description}
-                onChange={e => setSellForm({ ...sellForm, description: e.target.value })}
-                className="w-full p-3 border rounded-lg bg-gray-50 text-sm h-24 resize-none"
+                onChange={e => {
+                  setSellForm({ ...sellForm, description: e.target.value });
+                  e.target.style.height = 'auto';
+                  e.target.style.height = e.target.scrollHeight + 'px';
+                }}
+                className="w-full p-3 border rounded-lg bg-gray-50 text-sm resize-none overflow-hidden"
                 placeholder="請描述書籍狀況..."
+                rows={1}
               />
             </div>
 
@@ -3363,18 +3393,28 @@ const App = () => {
         </>
       )}
 
-      {/* Persistent Chat Button */}
+      {/* Persistent Chat Button (or Help Button for Guest) */}
       {currentUser && currentPage !== 'login' && !activeChat && (
         <>
-          <button
-            onClick={() => setShowChatList(!showChatList)}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-[#756256] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#5D4E44] transition-all transform hover:scale-105 z-40 border-2 border-white"
-          >
-            {showChatList ? <X size={24} /> : <MessageCircle size={24} />}
-            {!showChatList && hasUnreadMessages && (
-              <div className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-sm animate-pulse" />
-            )}
-          </button>
+          {currentUser.isGuest ? (
+            <button
+              onClick={() => navigate('tutorial')}
+              className="fixed bottom-6 right-6 w-14 h-14 bg-[#756256] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#5D4E44] transition-all transform hover:scale-105 z-40 border-2 border-white"
+              title="平台使用教學"
+            >
+              <HelpCircle size={24} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowChatList(!showChatList)}
+              className="fixed bottom-6 right-6 w-14 h-14 bg-[#756256] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#5D4E44] transition-all transform hover:scale-105 z-40 border-2 border-white"
+            >
+              {showChatList ? <X size={24} /> : <MessageCircle size={24} />}
+              {!showChatList && hasUnreadMessages && (
+                <div className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-sm animate-pulse" />
+              )}
+            </button>
+          )}
           {showChatList && (
             <>
               <div className="fixed inset-0 z-[45] bg-transparent" onClick={() => setShowChatList(false)} />
