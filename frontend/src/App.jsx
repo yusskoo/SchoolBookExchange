@@ -1811,6 +1811,10 @@ const HomePage = ({ onNavigate, user, currentAvatarId, coins, wishes, onAddWish,
 // ============================================
 
 const TutorialPage = ({ onBack, user, onJoin }) => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const sections = [
     {
       title: "如何加入？",
@@ -1837,7 +1841,7 @@ const TutorialPage = ({ onBack, user, onJoin }) => {
           <li className="list-none pt-2">
             <img src="/tutorial/輸入六碼.jpeg" alt="輸入六碼範例" className="w-full h-auto rounded-lg shadow-sm border border-gray-100" />
           </li>
-          <li><span className="text-red-500 font-bold">注意：每次發送訊息後，請耐心等待 5 秒才會收到回覆。</span></li>
+          <li><span style={{ color: 'red', fontWeight: 'bold' }}>注意：每次發送訊息後，請耐心等待 5 秒才會收到回覆。</span></li>
           <li>一個帳號僅能綁定一個 LINE 帳號，若想解除綁定請點擊「解除」。</li>
         </ul>
       )
@@ -3481,9 +3485,9 @@ const Footer = ({ onNavigate }) => (
       {/* 4. 聯絡我們 */}
       <div className="flex flex-col gap-3 justify-start md:mt-0">
         <div className="text-sm font-bold text-white mb-2 underline underline-offset-4 decoration-[#A58976]">聯絡我們</div>
-        <div className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start">
+        <a href="https://line.me/R/ti/p/@649fkijr" target="_blank" rel="noopener noreferrer" className="text-xs opacity-80 hover:opacity-100 transition-opacity flex items-center gap-2 justify-center md:justify-start hover:text-white">
           <MessageCircle size={14} /> LINE ID : @649fkijr
-        </div>
+        </a>
         <div className="text-[10px] opacity-50 mt-4 font-mono">
           © 2025 SchoolBook Exchange. All rights reserved.
         </div>
